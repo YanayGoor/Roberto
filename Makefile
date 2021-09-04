@@ -23,5 +23,5 @@ debug-server:
 	st-util -p ${DEBUG_PORT}
 
 debug:
-	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}"
+	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
 
