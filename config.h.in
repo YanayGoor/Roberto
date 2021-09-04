@@ -1,0 +1,3 @@
+// the configured options and settings for Tutorial
+#define ROBERTO_VERSION_MAJOR @Roberto_VERSION_MAJOR@
+#define ROBERTO_VERSION_MAJOR @Roberto_VERSION_MINOR@
