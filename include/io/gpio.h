@@ -37,6 +37,7 @@ const struct gpio_port gpio_pg;
 const struct gpio_port gpio_ph;
 const struct gpio_port gpio_pi;
 
+void gpio_init_pin(const struct gpio_port *port, struct gpio_pin pin);
 void gpio_init_bulk(const struct gpio_port *port, uint16_t pins,
 					enum gpio_mode mode);
 void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,

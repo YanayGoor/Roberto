@@ -28,7 +28,7 @@ static void set_pins_alt_fn(const struct gpio_port *port, uint64_t set_mask,
 			   set_mask >> SIZEOF_BITS(uint32_t));
 }
 
-static void gpio_init_pin(const struct gpio_port *port, struct gpio_pin pin) {
+void gpio_init_pin(const struct gpio_port *port, struct gpio_pin pin) {
 	enable_port_clock(port);
 	set_pins_mode(
 		port, SET_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN),
@@ -76,7 +76,7 @@ uint32_t gpio_read(const struct gpio_port *port) {
 // clang-format off
 #define GPIO_DEFINE_PORT(lower, upper)          \
 	const struct gpio_port gpio_p##lower = {	\
-		.regs = (GPIO##upper),             		\
+		.regs = GPIO##upper,             		\
 		.enr = RCC_AHB1ENR_GPIO##upper##EN		\
 	}
 // clang-format on
