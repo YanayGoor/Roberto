@@ -9,7 +9,17 @@
 #define GPIO_MODE_BITLEN   2
 #define GPIO_ALT_FN_BITLEN 4
 
-enum gpio_port { GPIO_A, GPIO_B, GPIO_C, GPIO_D, GPIO_E };
+enum gpio_port {
+	GPIO_PA,
+	GPIO_PB,
+	GPIO_PC,
+	GPIO_PD,
+	GPIO_PE,
+	GPIO_PF,
+	GPIO_PG,
+	GPIO_PH,
+	GPIO_PI
+};
 
 enum gpio_mode {
 	GPIO_INPUT = 0b00,
