@@ -12,48 +12,34 @@
 #define MODE_MASK	((1 << GPIO_MODE_BITLEN) - 1)
 #define ALT_FN_MASK ((1 << GPIO_ALT_FN_BITLEN) - 1)
 
-static GPIO_TypeDef *const port_regs[] = {
-	[GPIO_PA] = GPIOA, [GPIO_PB] = GPIOB, [GPIO_PC] = GPIOC,
-	[GPIO_PD] = GPIOD, [GPIO_PE] = GPIOE, [GPIO_PF] = GPIOF,
-	[GPIO_PG] = GPIOG, [GPIO_PH] = GPIOH, [GPIO_PI] = GPIOI,
-};
-
-static uint32_t const rcc_en[] = {
-	[GPIO_PA] = RCC_AHB1ENR_GPIOAEN, [GPIO_PB] = RCC_AHB1ENR_GPIOBEN,
-	[GPIO_PC] = RCC_AHB1ENR_GPIOCEN, [GPIO_PD] = RCC_AHB1ENR_GPIODEN,
-	[GPIO_PE] = RCC_AHB1ENR_GPIOEEN, [GPIO_PF] = RCC_AHB1ENR_GPIOFEN,
-	[GPIO_PG] = RCC_AHB1ENR_GPIOGEN, [GPIO_PH] = RCC_AHB1ENR_GPIOHEN,
-	[GPIO_PI] = RCC_AHB1ENR_GPIOIEN,
-};
-
-static void enable_port_clock(enum gpio_port port) {
-	RCC->AHB1ENR |= rcc_en[port];
+static void enable_port_clock(const struct gpio_port *port) {
+	RCC->AHB1ENR |= port->enr;
 }
 
-static void set_pins_mode(enum gpio_port port, uint32_t set_mask,
+static void set_pins_mode(const struct gpio_port *port, uint32_t set_mask,
 						  uint32_t clear_mask) {
-	MODIFY_REG(port_regs[port]->MODER, clear_mask, set_mask);
+	MODIFY_REG(port->regs->MODER, clear_mask, set_mask);
 }
 
-static void set_pins_alt_fn(enum gpio_port port, uint64_t set_mask,
+static void set_pins_alt_fn(const struct gpio_port *port, uint64_t set_mask,
 							uint64_t clear_mask) {
-	MODIFY_REG(port_regs[port]->AFR[0], clear_mask, set_mask);
-	MODIFY_REG(port_regs[port]->AFR[1], clear_mask >> SIZEOF_BITS(uint32_t),
+	MODIFY_REG(port->regs->AFR[0], clear_mask, set_mask);
+	MODIFY_REG(port->regs->AFR[1], clear_mask >> SIZEOF_BITS(uint32_t),
 			   set_mask >> SIZEOF_BITS(uint32_t));
 }
 
-static void gpio_init_pin(struct gpio_pin pin) {
-	enable_port_clock(pin.port);
+static void gpio_init_pin(const struct gpio_port *port, struct gpio_pin pin) {
+	enable_port_clock(port);
 	set_pins_mode(
-		pin.port, SET_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN),
+		port, SET_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN),
 		CLEAR_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN));
 	set_pins_alt_fn(
-		pin.port,
-		SET_MASK(pin.alt_fn, ALT_FN_MASK) << (pin.pin * GPIO_MODE_BITLEN),
+		port, SET_MASK(pin.alt_fn, ALT_FN_MASK) << (pin.pin * GPIO_MODE_BITLEN),
 		CLEAR_MASK(pin.alt_fn, ALT_FN_MASK) << (pin.pin * GPIO_MODE_BITLEN));
 }
 
-void gpio_init_bulk(enum gpio_port port, uint16_t pins, enum gpio_mode mode) {
+void gpio_init_bulk(const struct gpio_port *port, uint16_t pins,
+					enum gpio_mode mode) {
 	uint32_t set_mask = 0;
 	uint32_t clear_mask = 0;
 	for (int i = 0; i < SIZEOF_BITS(pins); i++) {
@@ -66,8 +52,24 @@ void gpio_init_bulk(enum gpio_port port, uint16_t pins, enum gpio_mode mode) {
 	set_pins_mode(port, set_mask, clear_mask);
 }
 
-void gpio_init(struct gpio_pin const *pins, size_t pins_len) {
+void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,
+			   size_t pins_len) {
 	for (int i = 0; i < pins_len; i++) {
-		gpio_init_pin(pins[i]);
+		gpio_init_pin(port, pins[i]);
 	}
 }
+
+#define GPIO_DEFINE_PORT(lower, upper)                                         \
+	const struct gpio_port gpio_p##lower = {.regs = (GPIO##upper),             \
+											.enr =                             \
+												RCC_AHB1ENR_GPIO##upper##EN}
+
+GPIO_DEFINE_PORT(a, A);
+GPIO_DEFINE_PORT(b, B);
+GPIO_DEFINE_PORT(c, C);
+GPIO_DEFINE_PORT(d, D);
+GPIO_DEFINE_PORT(e, E);
+GPIO_DEFINE_PORT(f, F);
+GPIO_DEFINE_PORT(g, G);
+GPIO_DEFINE_PORT(h, H);
+GPIO_DEFINE_PORT(i, I);

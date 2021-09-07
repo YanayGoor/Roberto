@@ -9,16 +9,9 @@
 #define GPIO_MODE_BITLEN   2
 #define GPIO_ALT_FN_BITLEN 4
 
-enum gpio_port {
-	GPIO_PA,
-	GPIO_PB,
-	GPIO_PC,
-	GPIO_PD,
-	GPIO_PE,
-	GPIO_PF,
-	GPIO_PG,
-	GPIO_PH,
-	GPIO_PI
+struct gpio_port {
+	GPIO_TypeDef *regs;
+	uint32_t enr;
 };
 
 enum gpio_mode {
@@ -29,13 +22,24 @@ enum gpio_mode {
 };
 
 struct gpio_pin {
-	enum gpio_port port;
-	uint8_t pin : 4;
+	uint8_t pin;
 	enum gpio_mode mode;
-	uint8_t alt_fn : GPIO_ALT_FN_BITLEN;
+	uint8_t alt_fn;
 };
 
-void gpio_init_bulk(enum gpio_port port, uint16_t pins, enum gpio_mode mode);
-void gpio_init(struct gpio_pin const *pins, size_t pins_len);
+const struct gpio_port gpio_pa;
+const struct gpio_port gpio_pb;
+const struct gpio_port gpio_pc;
+const struct gpio_port gpio_pd;
+const struct gpio_port gpio_pe;
+const struct gpio_port gpio_pf;
+const struct gpio_port gpio_pg;
+const struct gpio_port gpio_ph;
+const struct gpio_port gpio_pi;
+
+void gpio_init_bulk(const struct gpio_port *port, uint16_t pins,
+					enum gpio_mode mode);
+void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,
+			   size_t pins_len);
 
 #endif /* GPIO_H */

@@ -25,10 +25,10 @@
 	(GREEN_LED_MASK | ORANGE_LED_MASK | RED_LED_MASK | BLUE_LED_MASK)
 
 const struct gpio_pin onboard_LEDs[] = {
-	{.port = GPIO_PD, .pin = GREEN_LED, .mode = GPIO_OUTPUT},
-	{.port = GPIO_PD, .pin = ORANGE_LED, .mode = GPIO_OUTPUT},
-	{.port = GPIO_PD, .pin = RED_LED, .mode = GPIO_OUTPUT},
-	{.port = GPIO_PD, .pin = BLUE_LED, .mode = GPIO_OUTPUT},
+	{.pin = GREEN_LED, .mode = GPIO_OUTPUT},
+	{.pin = ORANGE_LED, .mode = GPIO_OUTPUT},
+	{.pin = RED_LED, .mode = GPIO_OUTPUT},
+	{.pin = BLUE_LED, .mode = GPIO_OUTPUT},
 };
 
 void delay(int weight) {
@@ -37,9 +37,9 @@ void delay(int weight) {
 
 int main() {
 #ifdef BULK
-	gpio_init_bulk(GPIO_PD, LEDS_MASK, GPIO_OUTPUT);
+	gpio_init_bulk(&gpio_pd, LEDS_MASK, GPIO_OUTPUT);
 #else
-	gpio_init(onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
+	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 #endif
 	while (1) {
 		for (int i = 0; i < SIZEOF_ARR(onboard_LEDs); i++) {
