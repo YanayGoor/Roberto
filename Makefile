@@ -2,8 +2,21 @@ PROJECT := Roberto
 DEBUG_PORT ?= 4242
 BUILD_DIR ?= cmake-build-debug
 
-default_target: build
-.PHONY: _flash flash debug-server debug build
+SOURCES += $(shell find . -name '*.c' -o -name '*.h')
+EXCLUDE_DIRS += ./stm32f4/%
+EXCLUDE_DIRS += ./include/stm32f4/%
+EXCLUDE_DIRS += ./$(BUILD_DIR)/%
+
+default_target: all
+.PHONY: _flash flash debug-server debug build format lint all
+
+all: format lint build
+
+format:
+	clang-format -i $(filter-out $(EXCLUDE_DIRS), $(SOURCES))
+
+lint:
+	clang-tidy --extra-arg="-Iinclude"  $(filter-out $(EXCLUDE_DIRS), $(SOURCES))
 
 ${BUILD_DIR}:
 	cmake -S . -B ${BUILD_DIR}

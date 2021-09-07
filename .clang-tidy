@@ -1,0 +1,4 @@
+---
+Checks:              '-*,readability-*'
+WarningsAsErrors:    '-*,readability-*'
+HeaderFilterRegex:   '^((?!stm32f4).)*$'
