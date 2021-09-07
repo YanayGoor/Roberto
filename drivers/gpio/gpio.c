@@ -59,10 +59,13 @@ void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,
 	}
 }
 
-#define GPIO_DEFINE_PORT(lower, upper)                                         \
-	const struct gpio_port gpio_p##lower = {.regs = (GPIO##upper),             \
-											.enr =                             \
-												RCC_AHB1ENR_GPIO##upper##EN}
+// clang-format off
+#define GPIO_DEFINE_PORT(lower, upper)          \
+	const struct gpio_port gpio_p##lower = {	\
+		.regs = (GPIO##upper),             		\
+		.enr = RCC_AHB1ENR_GPIO##upper##EN		\
+	}
+// clang-format on
 
 GPIO_DEFINE_PORT(a, A);
 GPIO_DEFINE_PORT(b, B);
