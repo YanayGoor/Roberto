@@ -59,6 +59,20 @@ void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,
 	}
 }
 
+void gpio_write_partial(const struct gpio_port *port, uint32_t value,
+						uint32_t mask) {
+	port->regs->BSRRL |= SET_MASK(value, mask);
+	port->regs->BSRRH |= CLEAR_MASK(value, mask);
+}
+
+void gpio_write(const struct gpio_port *port, uint32_t value) {
+	port->regs->ODR = value;
+}
+
+uint32_t gpio_read(const struct gpio_port *port) {
+	return port->regs->IDR;
+}
+
 // clang-format off
 #define GPIO_DEFINE_PORT(lower, upper)          \
 	const struct gpio_port gpio_p##lower = {	\

@@ -1,9 +1,4 @@
-#include <stm32f4/stm32f4xx.h>
-
 #include <io/gpio.h>
-
-#define SET_BIT_INX(reg, bit_inx)	reg |= 1 << bit_inx;
-#define CLEAR_BIT_INX(reg, bit_inx) reg &= ~(1 << bit_inx);
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
@@ -43,15 +38,15 @@ int main() {
 #endif
 	while (1) {
 		for (int i = 0; i < SIZEOF_ARR(onboard_LEDs); i++) {
-			SET_BIT_INX(GPIOD->ODR, onboard_LEDs[i].pin);
+			gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[i].pin);
 			delay(LONG_DELAY);
-			CLEAR_BIT_INX(GPIOD->ODR, onboard_LEDs[i].pin);
+			gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[i].pin);
 		}
 		for (int i = 0; i < FLASHES; i++) {
 			delay(SHORT_DELAY);
-			GPIOD->ODR |= LEDS_MASK;
+			gpio_write_partial(&gpio_pd, -1, LEDS_MASK);
 			delay(SHORT_DELAY);
-			GPIOD->ODR &= ~LEDS_MASK;
+			gpio_write_partial(&gpio_pd, 0, LEDS_MASK);
 		}
 		delay(SHORT_DELAY);
 	}

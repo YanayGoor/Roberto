@@ -41,5 +41,9 @@ void gpio_init_bulk(const struct gpio_port *port, uint16_t pins,
 					enum gpio_mode mode);
 void gpio_init(const struct gpio_port *port, struct gpio_pin const *pins,
 			   size_t pins_len);
+void gpio_write_partial(const struct gpio_port *port, uint32_t value,
+						uint32_t mask);
+void gpio_write(const struct gpio_port *port, uint32_t value);
+uint32_t gpio_read(const struct gpio_port *port);
 
 #endif /* GPIO_H */
