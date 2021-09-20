@@ -1,3 +1,4 @@
+#include <io/enc28j60.h>
 #include <io/gpio.h>
 #include <io/spi.h>
 #include <kernel/sched.h>
@@ -23,7 +24,7 @@ const struct gpio_pin onboard_LEDs[] = {
 	{.pin = BLUE_LED, .mode = GPIO_OUTPUT},
 };
 
-const struct spi_params enc28j60_spi_module = {
+const struct spi_params enc28j60_spi_params = {
 	.sclk_port = &gpio_pa,
 	.sclk_pin = 5,
 	.miso_port = &gpio_pa,
@@ -31,6 +32,24 @@ const struct spi_params enc28j60_spi_module = {
 	.mosi_port = &gpio_pa,
 	.mosi_pin = 7,
 	.is_master = true,
+};
+
+const struct enc28j60_controller enc28j60_controller1 = {
+	.module = &spi_module_1,
+	.slave =
+		{
+			.ss_port = &gpio_pa,
+			.ss_pin = 8,
+		},
+};
+
+const struct enc28j60_controller enc28j60_controller2 = {
+	.module = &spi_module_1,
+	.slave =
+		{
+			.ss_port = &gpio_pa,
+			.ss_pin = 9,
+		},
 };
 
 void delay(int weight) {
@@ -53,15 +72,15 @@ int main() {
 #else
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 #endif
-	spi_init(&spi_module_1, enc28j60_spi_module);
-
+	spi_init(&spi_module_1, enc28j60_spi_params);
+	enc28j60_init(enc28j60_controller1);
+	enc28j60_init(enc28j60_controller2);
 	sched_init();
 
 	sched_start_task(flash, (void *)0);
 	sched_start_task(flash, (void *)1);
 	sched_start_task(flash, (void *)2);
 	sched_start_task(flash, (void *)3);
-
 	while (1) {
 		sched_yield();
 		if (delay_weight > SHORT_DELAY) { delay_weight *= DELAY_PORTION; }
