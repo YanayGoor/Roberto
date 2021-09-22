@@ -19,9 +19,10 @@ struct ctrl_reg {
 	uint8_t address : 5;
 	bool dummy_byte; /* true if dummy byte is returned first when reading the
 						register */
+	bool wide;		 /* true if value is split to low and high registers */
 };
 
-struct pkt_hdr {
+struct pkt_rx_hdr {
 	uint16_t next_pkt_ptr;
 	uint16_t byte_count;
 	union {
@@ -47,6 +48,16 @@ struct pkt_hdr {
 	};
 };
 
+union pkt_tx_hdr {
+	struct {
+		uint8_t poverride : 1;
+		uint8_t pcrcen : 1;
+		uint8_t ppaden : 1;
+		uint8_t phugeen : 1;
+	};
+	uint8_t serialized;
+};
+
 union econ2 {
 	struct {
 		uint8_t reserved1 : 3;
@@ -59,13 +70,26 @@ union econ2 {
 	uint8_t serialized;
 };
 
+union econ1 {
+	struct {
+		uint8_t bsel : 2;
+		uint8_t rxen : 1;
+		uint8_t txrts : 1;
+		uint8_t csumen : 1;
+		uint8_t dmast : 1;
+		uint8_t rxrst : 1;
+		uint8_t txrst : 1;
+	};
+	uint8_t serialized;
+};
+
 #define RCR(arg) ((union opcode){.opcode = 0x0, .argument = arg}).serialized
 #define RBM()	 ((union opcode){.opcode = 0x1, .argument = 0x1a}).serialized
 #define WCR(arg) ((union opcode){.opcode = 0x2, .argument = arg}).serialized
 #define WBM()	 ((union opcode){.opcode = 0x3, .argument = 0x1a}).serialized
 #define BFS(arg) ((union opcode){.opcode = 0x4, .argument = arg}).serialized
 #define BFC(arg) ((union opcode){.opcode = 0x5, .argument = arg}).serialized
-#define BRC()	 ((union opcode){.opcode = 0x7, .argument = 0x1a}).serialized
+#define SRC()	 ((union opcode){.opcode = 0x7, .argument = 0x1f}).serialized
 
 #define ECON1 ((struct ctrl_reg){.shared = true, .address = 0x1f})
 #define ECON2 ((struct ctrl_reg){.shared = true, .address = 0x1e})
@@ -73,7 +97,11 @@ union econ2 {
 #define EIR	  ((struct ctrl_reg){.shared = true, .address = 0x1c})
 #define EIE	  ((struct ctrl_reg){.shared = true, .address = 0x1b})
 
-#define ERXRDPTH ((struct ctrl_reg){.bank = 0, .address = 0x0d})
-#define ERXRDPTL ((struct ctrl_reg){.bank = 0, .address = 0x0c})
+#define ERXRDPT ((struct ctrl_reg){.bank = 0, .address = 0x0c, .wide = true})
+
+#define ETXND ((struct ctrl_reg){.bank = 0, .address = 0x06, .wide = true})
+#define ETXST ((struct ctrl_reg){.bank = 0, .address = 0x04, .wide = true})
+#define EWRPT ((struct ctrl_reg){.bank = 0, .address = 0x2, .wide = true})
+#define ERDPT ((struct ctrl_reg){.bank = 0, .address = 0x0, .wide = true})
 
 #endif // ENC28J60_INTERNAL_H
