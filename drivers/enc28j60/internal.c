@@ -56,6 +56,7 @@ static void _write_ctrl_reg(struct enc28j60_controller enc, uint8_t address,
 		spi_write(enc.module, WCR(address));
 		spi_wait_write_ready(enc.module);
 		spi_write(enc.module, value);
+		spi_wait_write_ready(enc.module);
 	})
 }
 
@@ -82,6 +83,7 @@ static void _set_bits_ctrl_reg(struct enc28j60_controller enc, uint8_t address,
 		spi_write(enc.module, BFS(address));
 		spi_wait_write_ready(enc.module);
 		spi_write(enc.module, value);
+		spi_wait_write_ready(enc.module);
 	})
 }
 
@@ -90,13 +92,44 @@ static void _select_bank(struct enc28j60_controller enc, uint8_t bank) {
 	_write_ctrl_reg(enc, ECON1.address, econ1 | (bank & 0x3));
 }
 
+static buff_addr_t _get_rx_size(const struct enc28j60_params *params) {
+	return ENC28J60_LAST_ADDR / (params->rx_weight + params->tx_weight) *
+		   params->rx_weight;
+}
+
 void enc28j60_init(struct enc28j60_controller enc) {
+	buff_addr_t rx_size = _get_rx_size(&enc.params);
+
 	spi_slave_init(&enc.slave);
+
+	// initialize receive buffer
+	enc28j60_write_ctrl_reg(enc, ERXST, ENC28J60_LAST_ADDR - rx_size);
+	enc28j60_write_ctrl_reg(enc, ERXND, ENC28J60_LAST_ADDR);
+
+	enc28j60_write_ctrl_reg(enc, ERXRDPT, ENC28J60_LAST_ADDR - rx_size);
+
+	// initialize MAC
+	enc28j60_set_bits_ctrl_reg(enc, MACON1,
+							   REG_VALUE(macon1, .marxen = 1,
+										 .rxpaus = enc.params.full_duplex,
+										 .txpaus = enc.params.full_duplex));
+	enc28j60_write_ctrl_reg(enc, MACON3,
+							REG_VALUE(macon3, .padcfg = 0, .txcrcen = 0,
+									  .frmlnen = 0,
+									  .fuldpx = enc.params.full_duplex));
+	enc28j60_write_ctrl_reg(enc, MACON4, REG_VALUE(macon4, .defer = 1));
+	enc28j60_write_ctrl_reg(enc, MAMXFL, enc.params.max_frame_length);
+	enc28j60_write_ctrl_reg(enc, MABBIPG,
+							BBIPG_DEFAULT(enc.params.full_duplex));
+	enc28j60_write_ctrl_reg(enc, MAIPG, IPG_DEFAULT(enc.params.full_duplex));
+
+	// the documentation does not specify why we need to configure the MAC
+	// address. since this is currently only a switch, I will leave the mac
+	// address at 0.
 }
 
 void enc28j60_write_ctrl_reg(struct enc28j60_controller enc,
 							 struct ctrl_reg reg, uint16_t value) {
-	// TODO: return to previous bank?
 	if (!reg.shared) { _select_bank(enc, reg.bank); }
 	_write_ctrl_reg(enc, reg.address, LOW_BYTE(value));
 	if (reg.wide) { _write_ctrl_reg(enc, reg.address + 1, HIGH_BYTE(value)); }
@@ -104,7 +137,6 @@ void enc28j60_write_ctrl_reg(struct enc28j60_controller enc,
 
 void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller enc,
 								struct ctrl_reg reg, uint16_t value) {
-	// TODO: return to previous bank?
 	if (!reg.shared) { _select_bank(enc, reg.bank); }
 	_set_bits_ctrl_reg(enc, reg.address, LOW_BYTE(value));
 	if (reg.wide) {
@@ -114,7 +146,6 @@ void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller enc,
 
 uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller enc,
 								struct ctrl_reg reg) {
-	// TODO: return to previous bank?
 	if (!reg.shared) { _select_bank(enc, reg.bank); }
 	uint16_t value = _read_ctrl_reg(enc, reg.address, reg.dummy_byte);
 	if (reg.wide) {
@@ -124,7 +155,7 @@ uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller enc,
 	return value;
 }
 
-int enc28j60_receive_packet(struct enc28j60_controller enc, uint16_t address,
+int enc28j60_receive_packet(struct enc28j60_controller enc, buff_addr_t address,
 							struct pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size) {
 	int err = -1;
@@ -147,8 +178,9 @@ done:
 	return err;
 }
 
-void enc28j60_transmit_packet(struct enc28j60_controller enc, uint16_t address,
-							  uint8_t *buffer, size_t size) {
+void enc28j60_transmit_packet(struct enc28j60_controller enc,
+							  buff_addr_t address, uint8_t *buffer,
+							  size_t size) {
 	enc28j60_write_ctrl_reg(enc, ETXST, address);
 
 	SPI_SELECT_SLAVE(&enc.slave, {
@@ -164,7 +196,7 @@ void enc28j60_transmit_packet(struct enc28j60_controller enc, uint16_t address,
 }
 
 void enc28j60_packet_transmit_status(struct enc28j60_controller enc,
-									 uint16_t address,
+									 buff_addr_t address,
 									 union pkt_tx_hdr *header) {
 	enc28j60_write_ctrl_reg(enc, ETXST, address);
 
@@ -178,5 +210,6 @@ void enc28j60_reset(struct enc28j60_controller enc) {
 	SPI_SELECT_SLAVE(&enc.slave, {
 		spi_wait_write_ready(enc.module);
 		spi_write(enc.module, SRC());
+		spi_wait_write_ready(enc.module);
 	})
 }

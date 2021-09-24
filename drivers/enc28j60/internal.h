@@ -2,8 +2,16 @@
 #define ENC28J60_INTERNAL_H
 
 #include <assert.h>
+#include <io/enc28j60.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#define ENC28J60_LAST_ADDR ((buff_addr_t)0x1fff)
+
+#define BBIPG_DEFAULT(full_duplex) (full_duplex ? 0x15 : 0x12)
+#define IPG_DEFAULT(full_duplex)   (full_duplex ? 0x12 : 0x0c12)
+
+typedef uint16_t buff_addr_t;
 
 union opcode {
 	struct {
@@ -83,6 +91,38 @@ union econ1 {
 	uint8_t serialized;
 };
 
+union macon1 {
+	struct {
+		uint8_t marxen : 1;
+		uint8_t passall : 1;
+		uint8_t rxpaus : 1;
+		uint8_t txpaus : 1;
+	};
+	uint8_t serialized;
+};
+
+union macon3 {
+	struct {
+		uint8_t fuldpx : 1;
+		uint8_t frmlnen : 1;
+		uint8_t hfrmen : 1;
+		uint8_t phdren : 1;
+		uint8_t txcrcen : 1;
+		uint8_t padcfg : 3;
+	};
+	uint8_t serialized;
+};
+
+union macon4 {
+	struct {
+		uint8_t reserved : 4;
+		uint8_t nobkoff : 1;
+		uint8_t bpen : 1;
+		uint8_t defer : 1;
+	};
+	uint8_t serialized;
+};
+
 #define RCR(arg) ((union opcode){.opcode = 0x0, .argument = arg}).serialized
 #define RBM()	 ((union opcode){.opcode = 0x1, .argument = 0x1a}).serialized
 #define WCR(arg) ((union opcode){.opcode = 0x2, .argument = arg}).serialized
@@ -97,11 +137,34 @@ union econ1 {
 #define EIR	  ((struct ctrl_reg){.shared = true, .address = 0x1c})
 #define EIE	  ((struct ctrl_reg){.shared = true, .address = 0x1b})
 
-#define ERXRDPT ((struct ctrl_reg){.bank = 0, .address = 0x0c, .wide = true})
+#define MAMXFL	((struct ctrl_reg){.bank = 2, .address = 0x0a, .wide = true})
+#define MAIPG	((struct ctrl_reg){.bank = 2, .address = 0x06, .wide = true})
+#define MABBIPG ((struct ctrl_reg){.bank = 2, .address = 0x04})
+#define MACON4	((struct ctrl_reg){.bank = 2, .address = 0x03})
+#define MACON3	((struct ctrl_reg){.bank = 2, .address = 0x02})
+#define MACON1	((struct ctrl_reg){.bank = 2, .address = 0x00})
 
-#define ETXND ((struct ctrl_reg){.bank = 0, .address = 0x06, .wide = true})
-#define ETXST ((struct ctrl_reg){.bank = 0, .address = 0x04, .wide = true})
-#define EWRPT ((struct ctrl_reg){.bank = 0, .address = 0x2, .wide = true})
-#define ERDPT ((struct ctrl_reg){.bank = 0, .address = 0x0, .wide = true})
+#define ERXRDPT ((struct ctrl_reg){.bank = 0, .address = 0x0c, .wide = true})
+#define ERXND	((struct ctrl_reg){.bank = 0, .address = 0x0a, .wide = true})
+#define ERXST	((struct ctrl_reg){.bank = 0, .address = 0x08, .wide = true})
+#define ETXND	((struct ctrl_reg){.bank = 0, .address = 0x06, .wide = true})
+#define ETXST	((struct ctrl_reg){.bank = 0, .address = 0x04, .wide = true})
+#define EWRPT	((struct ctrl_reg){.bank = 0, .address = 0x02, .wide = true})
+#define ERDPT	((struct ctrl_reg){.bank = 0, .address = 0x00, .wide = true})
+
+void enc28j60_write_ctrl_reg(struct enc28j60_controller enc,
+							 struct ctrl_reg reg, uint16_t value);
+void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller enc,
+								struct ctrl_reg reg, uint16_t value);
+uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller enc,
+								struct ctrl_reg reg);
+int enc28j60_receive_packet(struct enc28j60_controller enc, uint16_t address,
+							struct pkt_rx_hdr *header, uint8_t *buffer,
+							size_t size);
+void enc28j60_transmit_packet(struct enc28j60_controller enc, uint16_t address,
+							  uint8_t *buffer, size_t size);
+void enc28j60_packet_transmit_status(struct enc28j60_controller enc,
+									 uint16_t address,
+									 union pkt_tx_hdr *header);
 
 #endif // ENC28J60_INTERNAL_H
