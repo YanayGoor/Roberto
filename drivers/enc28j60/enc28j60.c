@@ -55,25 +55,25 @@ int enc28j60_receive_packet(struct enc28j60_controller enc,
 							enc28j60_buff_addr_t address,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size) {
-	int err = -1;
-
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXST, address);
 
-	spi_slave_select(&enc.slave);
-	enc28j60_begin_buff_read(enc);
+	SPI_SELECT_SLAVE(&enc.slave, {
+		enc28j60_begin_buff_read(enc);
 
-	enc28j60_buff_read(enc, (uint8_t *)header, sizeof(header));
-	if (header->byte_count > size) { goto done; }
-	enc28j60_buff_read(enc, buffer, header->byte_count);
+		enc28j60_buff_read(enc, (uint8_t *)header, sizeof(header));
+		if (header->byte_count > size) {
+			// TODO: figure out a better way to handle errors without losing the
+			//  nice context manager syntax.
+			spi_slave_deselect(&enc.slave);
+			return -1;
+		}
+		enc28j60_buff_read(enc, buffer, header->byte_count);
+	})
 
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXRDPT, header->next_pkt_ptr);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON2,
 							   REG_VALUE(econ2, .pktdec = 1));
-	err = 0;
-
-done:
-	spi_slave_deselect(&enc.slave);
-	return err;
+	return 0;
 }
 
 void enc28j60_transmit_packet(struct enc28j60_controller enc,
@@ -86,12 +86,11 @@ void enc28j60_transmit_packet(struct enc28j60_controller enc,
 
 		enc28j60_buff_write_byte(enc, REG_VALUE(pkt_tx_hdr, .poverride = 0));
 		enc28j60_buff_write(enc, buffer, size);
-
-		enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size);
-
-		enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1,
-								   REG_VALUE(econ1, .txrts = 1));
 	})
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size);
+
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1,
+							   REG_VALUE(econ1, .txrts = 1));
 }
 
 void enc28j60_packet_transmit_status(struct enc28j60_controller enc,
