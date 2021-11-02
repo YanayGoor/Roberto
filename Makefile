@@ -8,7 +8,7 @@ EXCLUDE_DIRS += ./include/stm32f4/%
 EXCLUDE_DIRS += ./$(BUILD_DIR)/%
 
 default_target: all
-.PHONY: _flash flash debug-server debug build format lint all
+.PHONY: _flash flash debug-server debug build format lint all debug-exit
 
 all: format lint build
 
@@ -32,9 +32,10 @@ flash:
 	# flash sometimes fails the first time.
 	${MAKE} _flash || ${MAKE} _flash
 
-debug-server:
-	st-util -p ${DEBUG_PORT}
+debug: flash
+	st-util -p ${DEBUG_PORT} &
+	gdb-multiarch -ex "set confirm off" -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
 
-debug:
-	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
-
+debug-exit: flash
+	st-util -p ${DEBUG_PORT} &
+	gdb-multiarch -ex "set confirm off" -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}" -ex "b done" -ex "c" -ex "frame 1" -ex "info locals" -ex "q"

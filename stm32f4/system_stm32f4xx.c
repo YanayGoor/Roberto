@@ -380,6 +380,15 @@ static void SetSysClock(void)
     /* PCLK1 = HCLK / 4*/
     RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
 
+//    /* HCLK = SYSCLK / 1*/
+//    RCC->CFGR |= RCC_CFGR_HPRE_DIV16;
+//
+//    /* PCLK2 = HCLK / 2*/
+//    RCC->CFGR |= RCC_CFGR_PPRE2_DIV16;
+//
+//    /* PCLK1 = HCLK / 4*/
+//    RCC->CFGR |= RCC_CFGR_PPRE1_DIV16;
+//
     /* Configure the main PLL */
     RCC->PLLCFGR = PLL_M | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16) |
                    (RCC_PLLCFGR_PLLSRC_HSE) | (PLL_Q << 24);
@@ -400,7 +409,7 @@ static void SetSysClock(void)
     RCC->CFGR |= RCC_CFGR_SW_PLL;
 
     /* Wait till the main PLL is used as system clock source */
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL);
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL)
     {
     }
   }

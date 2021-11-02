@@ -71,9 +71,9 @@ void enc28j60_reset(struct enc28j60_controller *enc) {
 	WAIT_50_NS() // Tcsd
 }
 
-void enc28j60_receive_packet(struct enc28j60_controller *enc,
-							 struct enc28j60_pkt_rx_hdr *header,
-							 uint8_t *buffer, size_t size) {
+int enc28j60_receive_packet(struct enc28j60_controller *enc,
+							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
+							size_t size) {
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ERDPT, enc->next_pkt_addr);
 
 	SPI_SELECT_SLAVE(enc->slave, {
@@ -84,7 +84,7 @@ void enc28j60_receive_packet(struct enc28j60_controller *enc,
 			// TODO: figure out a better way to handle errors without losing the
 			//  nice context manager syntax.
 			spi_slave_deselect(enc->slave);
-			return;
+			return -1;
 		}
 		enc28j60_buff_read(enc, buffer, header->byte_count);
 	})
@@ -95,6 +95,7 @@ void enc28j60_receive_packet(struct enc28j60_controller *enc,
 	enc28j60_clear_bits_ctrl_reg(enc, ENC28J60_EIR, 1);
 
 	enc->next_pkt_addr = header->next_pkt_addr;
+	return header->byte_count;
 }
 
 void enc28j60_transmit_packet(struct enc28j60_controller *enc,

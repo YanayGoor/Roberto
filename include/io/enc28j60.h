@@ -17,7 +17,7 @@ struct enc28j60_controller {
 	uint16_t rx_queue_size;
 };
 
-struct enc28j60_pkt_rx_hdr {
+struct __attribute__((packed)) enc28j60_pkt_rx_hdr {
 	uint16_t next_pkt_addr;
 	uint16_t byte_count;
 	union {
@@ -59,9 +59,9 @@ void enc28j60_init(struct enc28j60_controller *enc,
 				   uint16_t max_frame_length, uint8_t rx_weight,
 				   uint8_t tx_weight);
 void enc28j60_reset(struct enc28j60_controller *enc);
-void enc28j60_receive_packet(struct enc28j60_controller *enc,
-							 struct enc28j60_pkt_rx_hdr *header,
-							 uint8_t *buffer, size_t size);
+int enc28j60_receive_packet(struct enc28j60_controller *enc,
+							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
+							size_t size);
 void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
 							  uint8_t *buffer, size_t size);
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,

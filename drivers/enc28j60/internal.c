@@ -13,6 +13,9 @@
 
 #define TO_HIGH_BYTE(hword) (hword << 8)
 
+extern int samples[];
+extern int samples_i;
+
 #define WAIT_210_NS()                                                          \
 	for (int i = 0; i < 105; i++) {}
 #define WAIT_10_US()                                                           \
