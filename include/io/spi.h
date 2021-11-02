@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 enum alt_fn {
+	AF0,
 	AF1,
 	AF2,
 	AF3,
@@ -66,10 +67,12 @@ void spi_init(const struct spi_module *module, struct spi_params params);
 void spi_write(const struct spi_module *module, uint8_t data);
 uint8_t spi_read(const struct spi_module *module);
 
-uint8_t spi_read_ready(const struct spi_module *module);
-uint8_t spi_write_ready(const struct spi_module *module);
+bool spi_read_ready(const struct spi_module *module);
+bool spi_write_ready(const struct spi_module *module);
+bool spi_is_busy(const struct spi_module *module);
 void spi_wait_read_ready(const struct spi_module *module);
 void spi_wait_write_ready(const struct spi_module *module);
+void spi_wait_not_busy(const struct spi_module *module);
 
 void spi_slave_init(const struct spi_slave *slave);
 void spi_slave_select(const struct spi_slave *slave);

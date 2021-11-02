@@ -15,15 +15,15 @@ void spi_init(const struct spi_module *module, const struct spi_params params) {
 
 	gpio_init_pin(params.sclk_port,
 				  (struct gpio_pin){.pin = params.sclk_pin,
-									.mode = GPIO_OUTPUT,
+									.mode = GPIO_ALTERNATE,
 									.alt_fn = module->alt_fn});
 	gpio_init_pin(params.mosi_port,
 				  (struct gpio_pin){.pin = params.mosi_pin,
-									.mode = GPIO_OUTPUT,
+									.mode = GPIO_ALTERNATE,
 									.alt_fn = module->alt_fn});
 	gpio_init_pin(params.miso_port,
 				  (struct gpio_pin){.pin = params.miso_pin,
-									.mode = GPIO_OUTPUT,
+									.mode = GPIO_ALTERNATE,
 									.alt_fn = module->alt_fn});
 	module->regs->CR1 |= params.crc_enable ? SPI_CR1_CRCEN : 0;
 	module->regs->CR1 |= params.lsb_first ? SPI_CR1_LSBFIRST : 0;
@@ -31,9 +31,11 @@ void spi_init(const struct spi_module *module, const struct spi_params params) {
 	module->regs->CR1 |= params.is_master ? SPI_CR1_MSTR : 0;
 	module->regs->CR1 |= params.clock_polarity ? SPI_CR1_CPOL : 0;
 	module->regs->CR1 |= params.clock_phase ? SPI_CR1_CPHA : 0;
-	module->regs->CR1 |= params.baud_rate & 1 ? SPI_CR1_BR_0 : 0;
-	module->regs->CR1 |= params.baud_rate & 2 ? SPI_CR1_BR_1 : 0;
-	module->regs->CR1 |= params.baud_rate & 4 ? SPI_CR1_BR_2 : 0;
+	module->regs->CR1 |= (params.baud_rate & 1) ? SPI_CR1_BR_0 : 0;
+	module->regs->CR1 |= (params.baud_rate & 2) ? SPI_CR1_BR_1 : 0;
+	module->regs->CR1 |= (params.baud_rate & 4) ? SPI_CR1_BR_2 : 0;
+	module->regs->CR1 |= SPI_CR1_SSM;
+	module->regs->CR1 |= SPI_CR1_SSI;
 	module->regs->CR2 = 0;
 
 	module->regs->CR1 |= SPI_CR1_SPE;
@@ -43,12 +45,16 @@ void spi_write(const struct spi_module *module, uint8_t data) {
 	module->regs->DR = data;
 }
 
-uint8_t spi_read_ready(const struct spi_module *module) {
+bool spi_read_ready(const struct spi_module *module) {
 	return module->regs->SR & SPI_SR_RXNE;
 }
 
-uint8_t spi_write_ready(const struct spi_module *module) {
+bool spi_write_ready(const struct spi_module *module) {
 	return module->regs->SR & SPI_SR_TXE;
+}
+
+bool spi_is_busy(const struct spi_module *module) {
+	return module->regs->SR & SPI_SR_BSY;
 }
 
 void spi_wait_read_ready(const struct spi_module *module) {
@@ -57,6 +63,10 @@ void spi_wait_read_ready(const struct spi_module *module) {
 
 void spi_wait_write_ready(const struct spi_module *module) {
 	while (!spi_write_ready(module)) {};
+}
+
+void spi_wait_not_busy(const struct spi_module *module) {
+	while (spi_is_busy(module)) {};
 }
 
 uint8_t spi_read(const struct spi_module *module) {
