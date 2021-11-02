@@ -15,8 +15,8 @@ typedef uint16_t enc28j60_buff_addr_t;
 
 union enc28j60_opcode {
 	struct {
-		uint8_t opcode : 3;
 		uint8_t argument : 5;
+		uint8_t opcode : 3;
 	};
 	uint8_t serialized;
 };
@@ -25,7 +25,8 @@ struct enc28j60_ctrl_reg {
 	bool shared; /* true is register can be accessed from all banks */
 	uint8_t bank : 2;
 	uint8_t address : 5;
-	bool wide; /* true if value is split to low and high registers */
+	bool wide;		 /* true if value is split to low and high registers */
+	bool dummy_byte; /* true if value is split to low and high registers */
 };
 
 union enc28j60_econ2 {
@@ -85,6 +86,19 @@ union enc28j60_macon4 {
 	uint8_t serialized;
 };
 
+union enc28j60_phcon1 {
+	struct {
+		uint8_t reserved : 8;
+		uint8_t pdpxmd : 1;
+		uint8_t reserved2 : 2;
+		uint8_t ppwrsv : 1;
+		uint8_t reserved3 : 2;
+		uint8_t ploopbk : 1;
+		uint8_t prst : 1;
+	};
+	uint16_t serialized;
+};
+
 #define ENC28J60_OPCODE(...) (((union enc28j60_opcode){__VA_ARGS__}).serialized)
 #define ENC28J60_REG(...)	 ((struct enc28j60_ctrl_reg){__VA_ARGS__})
 
@@ -102,13 +116,34 @@ union enc28j60_macon4 {
 #define ENC28J60_EIR   ENC28J60_REG(.shared = true, .address = 0x1c)
 #define ENC28J60_EIE   ENC28J60_REG(.shared = true, .address = 0x1b)
 
-#define ENC28J60_MAMXFL	 ENC28J60_REG(.bank = 2, .address = 0x0a, .wide = true)
-#define ENC28J60_MAIPG	 ENC28J60_REG(.bank = 2, .address = 0x06, .wide = true)
-#define ENC28J60_MABBIPG ENC28J60_REG(.bank = 2, .address = 0x04)
-#define ENC28J60_MACON4	 ENC28J60_REG(.bank = 2, .address = 0x03)
-#define ENC28J60_MACON3	 ENC28J60_REG(.bank = 2, .address = 0x02)
-#define ENC28J60_MACON1	 ENC28J60_REG(.bank = 2, .address = 0x00)
+#define ENC28J60_MISTAT                                                        \
+	ENC28J60_REG(.bank = 3, .address = 0x0a, .dummy_byte = true)
 
+#define ENC28J60_MIRD                                                          \
+	ENC28J60_REG(.bank = 2, .address = 0x18, .wide = true, .dummy_byte = true)
+#define ENC28J60_MIWR                                                          \
+	ENC28J60_REG(.bank = 2, .address = 0x16, .wide = true, .dummy_byte = true)
+#define ENC28J60_MIREGADR                                                      \
+	ENC28J60_REG(.bank = 2, .address = 0x14, .dummy_byte = true)
+#define ENC28J60_MICMD                                                         \
+	ENC28J60_REG(.bank = 2, .address = 0x12, .dummy_byte = true)
+#define ENC28J60_MAMXFL                                                        \
+	ENC28J60_REG(.bank = 2, .address = 0x0a, .wide = true, .dummy_byte = true)
+#define ENC28J60_MAIPG                                                         \
+	ENC28J60_REG(.bank = 2, .address = 0x06, .wide = true, .dummy_byte = true)
+#define ENC28J60_MABBIPG                                                       \
+	ENC28J60_REG(.bank = 2, .address = 0x04, .dummy_byte = true)
+#define ENC28J60_MACON4                                                        \
+	ENC28J60_REG(.bank = 2, .address = 0x03, .dummy_byte = true)
+#define ENC28J60_MACON3                                                        \
+	ENC28J60_REG(.bank = 2, .address = 0x02, .dummy_byte = true)
+#define ENC28J60_MACON1                                                        \
+	ENC28J60_REG(.bank = 2, .address = 0x00, .dummy_byte = true)
+
+#define ENC28J60_EPKTCNT ENC28J60_REG(.bank = 1, .address = 0x19)
+#define ENC28J60_ERXFCON ENC28J60_REG(.bank = 1, .address = 0x18)
+
+#define ENC28J60_ERXWRPT ENC28J60_REG(.bank = 0, .address = 0x0e, .wide = true)
 #define ENC28J60_ERXRDPT ENC28J60_REG(.bank = 0, .address = 0x0c, .wide = true)
 #define ENC28J60_ERXND	 ENC28J60_REG(.bank = 0, .address = 0x0a, .wide = true)
 #define ENC28J60_ERXST	 ENC28J60_REG(.bank = 0, .address = 0x08, .wide = true)
@@ -121,6 +156,8 @@ void enc28j60_write_ctrl_reg(struct enc28j60_controller enc,
 							 struct enc28j60_ctrl_reg reg, uint16_t value);
 void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller enc,
 								struct enc28j60_ctrl_reg reg, uint16_t value);
+void enc28j60_clear_bits_ctrl_reg(struct enc28j60_controller enc,
+								  struct enc28j60_ctrl_reg reg, uint16_t value);
 uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller enc,
 								struct enc28j60_ctrl_reg reg);
 
@@ -133,5 +170,10 @@ void enc28j60_begin_buff_write(struct enc28j60_controller enc);
 void enc28j60_buff_write_byte(struct enc28j60_controller enc, uint8_t value);
 void enc28j60_buff_write(struct enc28j60_controller enc, const uint8_t *buff,
 						 size_t size);
+
+uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller enc,
+									uint8_t addr);
+void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller enc, uint8_t addr,
+								 uint16_t value);
 
 #endif // ENC28J60_INTERNAL_H

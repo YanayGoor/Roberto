@@ -55,7 +55,7 @@ union enc28j60_pkt_tx_hdr {
 	uint8_t serialized;
 };
 
-void enc28j60_init(struct enc28j60_controller enc);
+uint16_t enc28j60_init(struct enc28j60_controller enc);
 void enc28j60_reset(struct enc28j60_controller enc);
 int enc28j60_receive_packet(struct enc28j60_controller enc, uint16_t address,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
