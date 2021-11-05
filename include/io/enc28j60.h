@@ -17,7 +17,7 @@ struct enc28j60_controller {
 	uint16_t rx_queue_size;
 };
 
-struct __attribute__((packed)) enc28j60_pkt_rx_hdr {
+struct enc28j60_pkt_rx_hdr {
 	uint16_t next_pkt_addr;
 	uint16_t byte_count;
 	union {

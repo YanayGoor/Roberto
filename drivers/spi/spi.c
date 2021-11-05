@@ -41,10 +41,6 @@ void spi_init(const struct spi_module *module, const struct spi_params params) {
 	module->regs->CR1 |= SPI_CR1_SPE;
 }
 
-int samples[1500] = {0};
-int samples_i = 0;
-//#define SPI_DEBUG
-
 void spi_write(const struct spi_module *module, uint8_t data) {
 	module->regs->DR = data;
 }
@@ -62,27 +58,15 @@ bool spi_is_busy(const struct spi_module *module) {
 }
 
 void spi_wait_read_ready(const struct spi_module *module) {
-	while (!spi_read_ready(module)) {
-#ifdef SPI_DEBUG
-		if (samples_i < 1500) { samples[samples_i++] = GPIOE->IDR; }
-#endif
-	};
+	while (!spi_read_ready(module)) {};
 }
 
 void spi_wait_write_ready(const struct spi_module *module) {
-	while (!spi_write_ready(module)) {
-#ifdef SPI_DEBUG
-		if (samples_i < 1500) { samples[samples_i++] = GPIOE->IDR; }
-#endif
-	};
+	while (!spi_write_ready(module)) {};
 }
 
 void spi_wait_not_busy(const struct spi_module *module) {
-	while (spi_is_busy(module)) {
-#ifdef SPI_DEBUG
-		if (samples_i < 1500) { samples[samples_i++] = GPIOE->IDR; }
-#endif
-	};
+	while (spi_is_busy(module)) {};
 }
 
 uint8_t spi_read(const struct spi_module *module) {

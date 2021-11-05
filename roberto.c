@@ -9,22 +9,12 @@
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
-#define SHORT_DELAY 800000
-#define LONG_DELAY	1600000
-
-#define FLASHES 3
+#define LONG_DELAY 400000
 
 #define GREEN_LED  12
 #define ORANGE_LED 13
 #define RED_LED	   14
 #define BLUE_LED   15
-
-#define GREEN_LED_MASK	(1 << GREEN_LED)
-#define ORANGE_LED_MASK (1 << ORANGE_LED)
-#define RED_LED_MASK	(1 << RED_LED)
-#define BLUE_LED_MASK	(1 << BLUE_LED)
-#define LEDS_MASK                                                              \
-	(GREEN_LED_MASK | ORANGE_LED_MASK | RED_LED_MASK | BLUE_LED_MASK)
 
 #define MAX_FRAME_LEN 1518
 
@@ -53,29 +43,11 @@ void delay(int weight) {
 	for (int i = 0; i < weight; i++) {}
 }
 
-extern int samples[];
-extern int samples_i;
-
 void flash(uint8_t on) {
 	gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[on].pin);
-	delay(800000);
+	delay(LONG_DELAY);
 	gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[on].pin);
-	delay(200000);
-}
-
-void flash3(uint8_t on0, uint8_t on1, uint8_t on2, uint8_t on3) {
-	//	gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[on].pin);
-	if (on0) { gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[0].pin); }
-	if (on1) { gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[1].pin); }
-	if (on2) { gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[2].pin); }
-	if (on3) { gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[3].pin); }
-	delay(1600000);
-	//	gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[on].pin);
-	if (on0) { gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[0].pin); }
-	if (on1) { gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[1].pin); }
-	if (on2) { gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[2].pin); }
-	if (on3) { gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[3].pin); }
-	delay(400000);
+	delay(LONG_DELAY);
 }
 
 void done() {
@@ -92,33 +64,22 @@ int main() {
 	enc28j60_init(&enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
 				  1, 1);
 	enc28j60_reset(&enc);
-	delay(1000000);
+	delay(LONG_DELAY);
 	enc28j60_init(&enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
 				  1, 1);
-
-	//	enc28j60_write_ctrl_reg(&enc, ENC28J60_ECON1, 4);
-	//	enc28j60_write_ctrl_reg(&enc, ENC28J60_MACON1, 3);
-	//	enc28j60_write_ctrl_reg(&enc, ENC28J60_MACON3, 5);
 
 	uint16_t macon1 = enc28j60_read_ctrl_reg(&enc, ENC28J60_MACON1);
 	uint16_t macon3 = enc28j60_read_ctrl_reg(&enc, ENC28J60_MACON3);
 	uint16_t econ1 = enc28j60_read_ctrl_reg(&enc, ENC28J60_ECON1);
-	//	uint16_t max_frame_len =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_MAMXFL);
-	//	uint16_t read_buffer_start =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXST);
-	//	uint16_t read_buffer_end =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXND);
-	//	uint16_t read_buffer_read_start =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXRDPT);
-	//	uint16_t macon4 =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_MACON4);
-	//	uint16_t mabb =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_MABBIPG);
-	//	uint16_t mai =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_MAIPG);
-	//	uint16_t filters =
-	//		enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXFCON);
+	uint16_t max_frame_len = enc28j60_read_ctrl_reg(&enc, ENC28J60_MAMXFL);
+	uint16_t read_buffer_start = enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXST);
+	uint16_t read_buffer_end = enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXND);
+	uint16_t read_buffer_read_start =
+		enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXRDPT);
+	uint16_t macon4 = enc28j60_read_ctrl_reg(&enc, ENC28J60_MACON4);
+	uint16_t mabb = enc28j60_read_ctrl_reg(&enc, ENC28J60_MABBIPG);
+	uint16_t mai = enc28j60_read_ctrl_reg(&enc, ENC28J60_MAIPG);
+	uint16_t filters = enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXFCON);
 	uint16_t phid1 = enc28j60_read_phy_ctrl_reg(&enc, 0x02);
 	uint16_t phcon1 = enc28j60_read_phy_ctrl_reg(&enc, 0x00);
 
@@ -160,12 +121,6 @@ int main() {
 		}
 		flash(0);
 	}
-
-	//	for (int j = 0; j < samples_i; j++) {
-	//		flash3(samples[j] & 1, (samples[j] & (1 << 1)) ? 1 : 0,
-	//			   (samples[j] & (1 << 2)) ? 1 : 0,
-	//			   (samples[j] & (1 << 4)) ? 1 : 0);
-	//	}
 
 	done();
 }
