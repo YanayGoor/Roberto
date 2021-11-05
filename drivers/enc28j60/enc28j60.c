@@ -111,18 +111,18 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 		enc28j60_buff_write(enc, buffer, size);
 	})
 
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size + 1);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1,
 							   REG_VALUE(econ1, .txrts = 1));
 }
 
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 									 enc28j60_buff_addr_t address,
-									 union enc28j60_pkt_tx_hdr *header) {
+									 union enc28j60_pkt_tx_status *status) {
 	enc28j60_write_ctrl_reg(enc, ENC28J60_EWRPT, address);
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_read(enc);
-		enc28j60_buff_read(enc, (uint8_t *)header, sizeof(header));
+		enc28j60_buff_read(enc, (uint8_t *)status, sizeof(*status));
 	})
 }

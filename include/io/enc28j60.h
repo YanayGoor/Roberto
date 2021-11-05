@@ -53,6 +53,32 @@ union enc28j60_pkt_tx_hdr {
 	uint8_t serialized;
 };
 
+union enc28j60_pkt_tx_status {
+	struct {
+		uint16_t byte_count;
+		uint8_t collision_count : 4;
+		uint8_t crc_err : 1;
+		uint8_t len_check_err : 1;
+		uint8_t len_out_of_range : 1;
+		uint8_t done : 1;
+		uint8_t multicast : 1;
+		uint8_t broadcast : 1;
+		uint8_t deferred : 1;
+		uint8_t accessivly_deferred : 1;
+		uint8_t accessive_collision : 1;
+		uint8_t late_collision : 1;
+		uint8_t giant : 1;
+		uint8_t underrun : 1;
+		uint16_t bytes_transmitted;
+		uint8_t ctrl_frame : 1;
+		uint8_t pause_frame : 1;
+		uint8_t backpressure_applied : 1;
+		uint8_t vlan : 1;
+		uint8_t zero : 3;
+	};
+	uint8_t serialized[7];
+};
+
 void enc28j60_init(struct enc28j60_controller *enc,
 				   const struct spi_module *module,
 				   const struct spi_slave *slave, bool full_duplex,
@@ -66,6 +92,5 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
 							  uint8_t *buffer, size_t size);
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 									 uint16_t address,
-									 union enc28j60_pkt_tx_hdr *header);
-
+									 union enc28j60_pkt_tx_status *status);
 #endif // ENC28J60_H
