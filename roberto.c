@@ -83,43 +83,31 @@ int main() {
 	uint16_t phid1 = enc28j60_read_phy_ctrl_reg(&enc, 0x02);
 	uint16_t phcon1 = enc28j60_read_phy_ctrl_reg(&enc, 0x00);
 
-	uint16_t received = 0;
-	struct enc28j60_pkt_rx_hdr *prev2_hdr =
-		malloc(sizeof(struct enc28j60_pkt_rx_hdr));
-	struct enc28j60_pkt_rx_hdr *prev_hdr =
-		malloc(sizeof(struct enc28j60_pkt_rx_hdr));
 	struct enc28j60_pkt_rx_hdr *hdr =
 		malloc(sizeof(struct enc28j60_pkt_rx_hdr));
 	uint8_t *buff = malloc(enc.max_frame_length);
-	int read = 0;
-	uint16_t prev_err = 0;
-	uint16_t prev2_err = 0;
+
+	uint16_t received = 0;
+	uint16_t read = 0;
 	uint16_t err = 0;
-	uint16_t errs = 0;
-	while (read < 300) {
-		prev2_err = prev_err;
-		prev_err = err;
+	while (1) {
 		err = enc28j60_read_ctrl_reg(&enc, ENC28J60_EIR) & 1;
-		uint16_t wanna_write_at =
-			enc28j60_read_ctrl_reg(&enc, ENC28J60_ERXWRPT);
+		if (err) { gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[2].pin); }
 		received = enc28j60_read_ctrl_reg(&enc, ENC28J60_EPKTCNT);
-		if (received) {
-			int success =
-				enc28j60_receive_packet(&enc, hdr, buff, enc.max_frame_length);
-			if (success > 0) {
-				memcpy(prev2_hdr, prev_hdr, sizeof(struct enc28j60_pkt_rx_hdr));
-				memcpy(prev_hdr, hdr, sizeof(struct enc28j60_pkt_rx_hdr));
-				read++;
-				if (errs) { errs = 0; }
-				flash(1);
-			} else if (errs < 100) {
-				errs++;
-			} else {
-				// cry
-				int a = 5;
-			}
+		if (!received) {
+			gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[0].pin);
+			continue;
 		}
-		flash(0);
+		gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[0].pin);
+		gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[1].pin);
+		int success =
+			enc28j60_receive_packet(&enc, hdr, buff, enc.max_frame_length);
+		if (success < 0) {
+			gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[3].pin);
+		} else {
+			read++;
+			gpio_write_partial(&gpio_pd, 0, 0xffff);
+		}
 	}
 
 	done();
