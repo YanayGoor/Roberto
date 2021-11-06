@@ -89,7 +89,7 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size);
 void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
-							  uint8_t *buffer, size_t size);
+							  const uint8_t *buffer, size_t size);
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 									 uint16_t address,
 									 union enc28j60_pkt_tx_status *status);

@@ -107,6 +107,15 @@ int main() {
 		} else {
 			read++;
 			gpio_write_partial(&gpio_pd, 0, 0xffff);
+
+			if (!(enc28j60_read_ctrl_reg(&enc, ENC28J60_ECON1) & (1 << 3))) {
+				uint8_t src_mac[6] = {1, 3, 3, 7, 9, 9};
+
+				memcpy(buff, buff + 6, 6);
+				memcpy(buff + 6, src_mac, 6);
+				enc28j60_transmit_packet(&enc, 0, (uint8_t *)buff,
+										 hdr->byte_count);
+			}
 		}
 	}
 
