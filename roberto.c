@@ -17,6 +17,8 @@
 
 unsigned int delay_weight = LONG_DELAY;
 
+#define MAX_FRAME_LEN 1518
+
 const struct gpio_pin onboard_LEDs[] = {
 	{.pin = GREEN_LED, .mode = GPIO_OUTPUT},
 	{.pin = ORANGE_LED, .mode = GPIO_OUTPUT},
@@ -24,32 +26,18 @@ const struct gpio_pin onboard_LEDs[] = {
 	{.pin = BLUE_LED, .mode = GPIO_OUTPUT},
 };
 
-const struct spi_params enc28j60_spi_params = {
-	.sclk_port = &gpio_pa,
-	.sclk_pin = 5,
-	.miso_port = &gpio_pa,
-	.miso_pin = 6,
-	.mosi_port = &gpio_pa,
-	.mosi_pin = 7,
-	.is_master = true,
-};
+const struct spi_params enc28j60_spi_params = {.sclk_port = &gpio_pb,
+											   .sclk_pin = 3,
+											   .miso_port = &gpio_pb,
+											   .miso_pin = 4,
+											   .mosi_port = &gpio_pb,
+											   .mosi_pin = 5,
+											   .is_master = true,
+											   .baud_rate = 7};
 
-const struct enc28j60_controller enc28j60_controller1 = {
-	.module = &spi_module_1,
-	.slave =
-		{
-			.ss_port = &gpio_pa,
-			.ss_pin = 8,
-		},
-};
-
-const struct enc28j60_controller enc28j60_controller2 = {
-	.module = &spi_module_1,
-	.slave =
-		{
-			.ss_port = &gpio_pa,
-			.ss_pin = 9,
-		},
+const struct spi_slave enc8j60_spi_slave = {
+	.ss_port = &gpio_pb,
+	.ss_pin = 6,
 };
 
 void delay(int weight) {
@@ -67,14 +55,11 @@ void flash(void *color_idx) {
 }
 
 int main() {
-#ifdef BULK
-	gpio_init_bulk(&gpio_pd, LEDS_MASK, GPIO_OUTPUT);
-#else
+	struct enc28j60_controller enc = {0};
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
-#endif
 	spi_init(&spi_module_1, enc28j60_spi_params);
-	enc28j60_init(enc28j60_controller1);
-	enc28j60_init(enc28j60_controller2);
+	enc28j60_init(&enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
+				  1, 1);
 	sched_init();
 
 	sched_start_task(flash, (void *)0);

@@ -152,28 +152,28 @@ union enc28j60_phcon1 {
 #define ENC28J60_EWRPT	 ENC28J60_REG(.bank = 0, .address = 0x02, .wide = true)
 #define ENC28J60_ERDPT	 ENC28J60_REG(.bank = 0, .address = 0x00, .wide = true)
 
-void enc28j60_write_ctrl_reg(struct enc28j60_controller enc,
+void enc28j60_write_ctrl_reg(struct enc28j60_controller *enc,
 							 struct enc28j60_ctrl_reg reg, uint16_t value);
-void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller enc,
+void enc28j60_set_bits_ctrl_reg(struct enc28j60_controller *enc,
 								struct enc28j60_ctrl_reg reg, uint16_t value);
-void enc28j60_clear_bits_ctrl_reg(struct enc28j60_controller enc,
+void enc28j60_clear_bits_ctrl_reg(struct enc28j60_controller *enc,
 								  struct enc28j60_ctrl_reg reg, uint16_t value);
-uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller enc,
+uint16_t enc28j60_read_ctrl_reg(struct enc28j60_controller *enc,
 								struct enc28j60_ctrl_reg reg);
 
-void enc28j60_begin_buff_read(struct enc28j60_controller enc);
-uint8_t enc28j60_buff_read_byte(struct enc28j60_controller enc);
-void enc28j60_buff_read(struct enc28j60_controller enc, uint8_t *buff,
+void enc28j60_begin_buff_read(struct enc28j60_controller *enc);
+uint8_t enc28j60_buff_read_byte(struct enc28j60_controller *enc);
+void enc28j60_buff_read(struct enc28j60_controller *enc, uint8_t *buff,
 						size_t size);
 
-void enc28j60_begin_buff_write(struct enc28j60_controller enc);
-void enc28j60_buff_write_byte(struct enc28j60_controller enc, uint8_t value);
-void enc28j60_buff_write(struct enc28j60_controller enc, const uint8_t *buff,
+void enc28j60_begin_buff_write(struct enc28j60_controller *enc);
+void enc28j60_buff_write_byte(struct enc28j60_controller *enc, uint8_t value);
+void enc28j60_buff_write(struct enc28j60_controller *enc, const uint8_t *buff,
 						 size_t size);
 
-uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller enc,
+uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller *enc,
 									uint8_t addr);
-void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller enc, uint8_t addr,
+void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller *enc, uint8_t addr,
 								 uint16_t value);
 
 #endif // ENC28J60_INTERNAL_H

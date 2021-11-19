@@ -5,22 +5,20 @@
 
 #define MAC_ADDR_BYTES 6
 
-struct enc28j60_params {
-	bool full_duplex;
-	uint16_t max_frame_length; /* default should be 1518 */
-	uint8_t rx_weight;
-	uint8_t tx_weight;
-	uint8_t mac_addr[MAC_ADDR_BYTES];
-};
-
 struct enc28j60_controller {
 	const struct spi_module *module;
-	const struct spi_slave slave;
-	const struct enc28j60_params params;
+	const struct spi_slave *slave;
+	/* cached state */
+	int8_t selected_bank;
+	uint16_t next_pkt_addr;
+	/* parameters */
+	bool full_duplex;
+	uint16_t max_frame_length;
+	uint16_t rx_queue_size;
 };
 
 struct enc28j60_pkt_rx_hdr {
-	uint16_t next_pkt_ptr;
+	uint16_t next_pkt_addr;
 	uint16_t byte_count;
 	union {
 		struct {
@@ -55,14 +53,18 @@ union enc28j60_pkt_tx_hdr {
 	uint8_t serialized;
 };
 
-uint16_t enc28j60_init(struct enc28j60_controller enc);
-void enc28j60_reset(struct enc28j60_controller enc);
-int enc28j60_receive_packet(struct enc28j60_controller enc, uint16_t address,
-							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
-							size_t size);
-void enc28j60_transmit_packet(struct enc28j60_controller enc, uint16_t address,
+void enc28j60_init(struct enc28j60_controller *enc,
+				   const struct spi_module *module,
+				   const struct spi_slave *slave, bool full_duplex,
+				   uint16_t max_frame_length, uint8_t rx_weight,
+				   uint8_t tx_weight);
+void enc28j60_reset(struct enc28j60_controller *enc);
+void enc28j60_receive_packet(struct enc28j60_controller *enc,
+							 struct enc28j60_pkt_rx_hdr *header,
+							 uint8_t *buffer, size_t size);
+void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
 							  uint8_t *buffer, size_t size);
-void enc28j60_packet_transmit_status(struct enc28j60_controller enc,
+void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 									 uint16_t address,
 									 union enc28j60_pkt_tx_hdr *header);
 
