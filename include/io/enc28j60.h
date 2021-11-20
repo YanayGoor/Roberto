@@ -12,7 +12,7 @@ struct enc28j60_controller {
 	/* parameters */
 	bool full_duplex;
 	uint16_t max_frame_length;
-	uint16_t rx_queue_size;
+	uint16_t rx_buff_start;
 };
 
 struct enc28j60_pkt_rx_hdr {

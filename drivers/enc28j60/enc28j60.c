@@ -9,7 +9,11 @@
 #define WAIT_50_NS()                                                           \
 	for (int i = 0; i < 25; i++) {}
 
-static enc28j60_buff_addr_t _get_rx_size(uint8_t rx_weight, uint8_t tx_weight) {
+#define WRAP_RX_BUFF(addr, rx_buff_start)                                      \
+	(addr < rx_buff_start ? addr + ENC28J60_LAST_ADDR - rx_buff_start : addr)
+
+static enc28j60_buff_addr_t get_rx_buff_size(uint8_t rx_weight,
+											 uint8_t tx_weight) {
 	return ENC28J60_LAST_ADDR / (rx_weight + tx_weight) * rx_weight;
 }
 
@@ -18,22 +22,21 @@ void enc28j60_init(struct enc28j60_controller *enc,
 				   const struct spi_slave *slave, bool full_duplex,
 				   uint16_t max_frame_length, uint8_t rx_weight,
 				   uint8_t tx_weight) {
-	enc28j60_buff_addr_t rx_queue_size = _get_rx_size(rx_weight, tx_weight);
+	enc28j60_buff_addr_t rx_buff_size = get_rx_buff_size(rx_weight, tx_weight);
 
 	enc->module = module;
 	enc->slave = slave;
 	enc->full_duplex = full_duplex;
 	enc->max_frame_length = max_frame_length;
-	enc->rx_queue_size = rx_queue_size;
-	enc->next_pkt_addr = ENC28J60_LAST_ADDR - rx_queue_size;
+	enc->rx_buff_start = ENC28J60_LAST_ADDR - rx_buff_size;
+	enc->next_pkt_addr = enc->rx_buff_start;
 	enc->selected_bank = -1;
 
 	// initialize spi slave
 	spi_slave_init(slave);
 
 	// initialize receive buffer
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXST,
-							ENC28J60_LAST_ADDR - rx_queue_size);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXST, enc->rx_buff_start);
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXND, ENC28J60_LAST_ADDR);
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXRDPT, ENC28J60_LAST_ADDR);
 
@@ -89,7 +92,9 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 		enc28j60_buff_read(enc, buffer, header->byte_count);
 	})
 
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ERXRDPT, header->next_pkt_addr - 1);
+	enc28j60_write_ctrl_reg(
+		enc, ENC28J60_ERXRDPT,
+		WRAP_RX_BUFF(enc->next_pkt_addr - 1, enc->rx_buff_start));
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON2,
 							   REG_VALUE(econ2, .pktdec = 1));
 	enc28j60_clear_bits_ctrl_reg(enc, ENC28J60_EIR, 1);
@@ -123,7 +128,7 @@ void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_read(enc);
-		enc28j60_buff_read(enc, (uint8_t *)status, sizeof(status));
+		enc28j60_buff_read(enc, (uint8_t *)status, sizeof(*status));
 	})
 }
 
