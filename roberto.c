@@ -3,6 +3,7 @@
 #include <io/spi.h>
 #include <kernel/sched.h>
 #include <malloc.h>
+#include <memory.h>
 #include <stdbool.h>
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
@@ -19,6 +20,7 @@
 unsigned int delay_weight = LONG_DELAY;
 
 #define MAX_FRAME_LEN 1518
+#define ETHERNOT_LEN  6
 
 const struct gpio_pin onboard_LEDs[] = {
 	{.pin = GREEN_LED, .mode = GPIO_OUTPUT},
@@ -63,6 +65,8 @@ void flash(void *color_idx) {
 	}
 }
 
+const uint8_t src_mac[ETHERNOT_LEN] = {1, 3, 3, 7, 9, 9};
+
 void enc_poll(void *enc_arg) {
 	int bytes_read;
 	unsigned int packets_read;
@@ -78,19 +82,25 @@ void enc_poll(void *enc_arg) {
 		if (err) { turn_led_on(onboard_LEDs[2]); }
 		if (!packets_received) {
 			turn_led_on(onboard_LEDs[0]);
-		} else {
-			turn_led_off(onboard_LEDs[0]);
-			turn_led_on(onboard_LEDs[1]);
-			bytes_read =
-				enc28j60_receive_packet(enc, hdr, buff, enc->max_frame_length);
-			turn_led_off(onboard_LEDs[1]);
-			if (bytes_read == -1) {
-				turn_led_on(onboard_LEDs[3]);
-			} else {
-				turn_led_off(onboard_LEDs[3]);
-				turn_led_off(onboard_LEDs[2]);
-				packets_read++;
-			}
+			continue;
+		}
+		turn_led_off(onboard_LEDs[0]);
+		turn_led_on(onboard_LEDs[1]);
+		bytes_read =
+			enc28j60_receive_packet(enc, hdr, buff, enc->max_frame_length);
+		turn_led_off(onboard_LEDs[1]);
+		if (bytes_read == -1) {
+			turn_led_on(onboard_LEDs[3]);
+			continue;
+		}
+		turn_led_off(onboard_LEDs[3]);
+		turn_led_off(onboard_LEDs[2]);
+		packets_read++;
+
+		if (!enc28j60_check_tx_busy(enc)) {
+			memcpy(buff, buff + ETHERNOT_LEN, ETHERNOT_LEN);
+			memcpy(buff + ETHERNOT_LEN, src_mac, ETHERNOT_LEN);
+			enc28j60_transmit_packet(enc, 0, (uint8_t *)buff, hdr->byte_count);
 		}
 	}
 }

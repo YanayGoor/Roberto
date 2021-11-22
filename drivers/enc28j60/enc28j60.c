@@ -5,9 +5,9 @@
 #define REG_VALUE(reg, ...) (((union enc28j60_##reg){__VA_ARGS__}).serialized)
 
 #define WAIT_10_NS()                                                           \
-	for (int i = 0; i < 5; i++) {}
+	for (int i = 0; i < 10; i++) {}
 #define WAIT_50_NS()                                                           \
-	for (int i = 0; i < 25; i++) {}
+	for (int i = 0; i < 50; i++) {}
 
 #define WRAP_RX_BUFF(addr, rx_buff_start)                                      \
 	(addr < rx_buff_start ? addr + ENC28J60_LAST_ADDR - rx_buff_start : addr)
@@ -112,8 +112,12 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_write(enc);
 
-		enc28j60_buff_write_byte(enc, REG_VALUE(pkt_tx_hdr, .poverride = 0));
+		// TODO: revert flags
+		enc28j60_buff_write_byte(
+			enc, REG_VALUE(pkt_tx_hdr, .poverride = 1, .pcrcen = 1));
 		enc28j60_buff_write(enc, buffer, size);
+
+		enc28j60_finish_buff_write(enc);
 	})
 
 	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size);
@@ -124,7 +128,7 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
 									 enc28j60_buff_addr_t address,
 									 union enc28j60_pkt_tx_status *status) {
-	enc28j60_write_ctrl_reg(enc, ENC28J60_EWRPT, address);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ERDPT, address);
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_read(enc);
@@ -138,4 +142,8 @@ uint16_t enc28j60_packets_received(struct enc28j60_controller *enc) {
 
 bool enc28j60_check_error(struct enc28j60_controller *enc) {
 	return enc28j60_read_ctrl_reg(enc, ENC28J60_EIR) & 1;
+}
+
+bool enc28j60_check_tx_busy(struct enc28j60_controller *enc) {
+	return enc28j60_read_ctrl_reg(enc, ENC28J60_ECON1) & (1 << 3);
 }

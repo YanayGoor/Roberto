@@ -170,6 +170,7 @@ void enc28j60_begin_buff_write(struct enc28j60_controller *enc);
 void enc28j60_buff_write_byte(struct enc28j60_controller *enc, uint8_t value);
 void enc28j60_buff_write(struct enc28j60_controller *enc, const uint8_t *buff,
 						 size_t size);
+void enc28j60_finish_buff_write(struct enc28j60_controller *enc);
 
 uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller *enc,
 									uint8_t addr);

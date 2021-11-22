@@ -8,7 +8,7 @@
 
 #define SIZEOF_BITS(x) (sizeof(x) * CHAR_BIT)
 
-#define LOW_BYTE(hword)	 (hword & 0xffff)
+#define LOW_BYTE(hword)	 (hword & 0xff)
 #define HIGH_BYTE(hword) (hword >> 8)
 
 #define TO_HIGH_BYTE(hword) (hword << 8)
@@ -114,6 +114,14 @@ void enc28j60_begin_buff_write(struct enc28j60_controller *enc) {
 void enc28j60_buff_write_byte(struct enc28j60_controller *enc, uint8_t value) {
 	spi_wait_write_ready(enc->module);
 	spi_write(enc->module, value);
+	// read previous value
+	spi_wait_read_ready(enc->module);
+	spi_read(enc->module);
+}
+
+void enc28j60_finish_buff_write(struct enc28j60_controller *enc) {
+	spi_wait_read_ready(enc->module);
+	spi_read(enc->module);
 }
 
 void enc28j60_buff_write(struct enc28j60_controller *enc, const uint8_t *buff,

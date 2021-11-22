@@ -88,6 +88,7 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 							size_t size);
 uint16_t enc28j60_packets_received(struct enc28j60_controller *enc);
 bool enc28j60_check_error(struct enc28j60_controller *enc);
+bool enc28j60_check_tx_busy(struct enc28j60_controller *enc);
 void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
 							  const uint8_t *buffer, size_t size);
 void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,

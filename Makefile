@@ -32,9 +32,7 @@ flash:
 	# flash sometimes fails the first time.
 	${MAKE} _flash || ${MAKE} _flash
 
-debug-server:
-	st-util -p ${DEBUG_PORT}
-
-debug:
+debug: flash
+	st-util -p ${DEBUG_PORT} &
 	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
 
