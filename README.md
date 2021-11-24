@@ -10,18 +10,6 @@ Home router implemented from scratch using STM32 microcontroller and ENC28J60 et
 ## Roadmap
 *Note: The roadmap is user-feature oriented and the OS features will be built througout the process as needed.*
 
-### TODOs
-- [ ] Hardware drivers
-  - [ ] Use defines instead of union/structs for enc registers in driver.
-  - [ ] Remove addr arg from transmit packet in enc driver.
-  - [ ] Return all errors from enc driver and mask them outside.
-  - [ ] Rewrite spi write/read to be more high level to ensure read buffer is always cleaned up and support buffers.
-
-- [ ] Repeater logic (2 controllers)
-  - [ ] Add another controller to loop.
-  - [ ] Add internal packet buffer.
-  - [ ] Make enc driver non-blocking using DMA so the 2 controllers can work in parallel.
-
 ### MVPs
 - [ ] Hardware drivers
 - [ ] Repeater logic (2 controllers)
@@ -37,10 +25,20 @@ Home router implemented from scratch using STM32 microcontroller and ENC28J60 et
 - [ ] WLAN
 - [ ] Gigabit Ethernet
 
-###
-
 ## Installation
 for Ubuntu:
 ```shell
 sudo apt install gcc-arm-none-eabi stlink-tools cmake
 ```
+
+## TODOs
+- [ ] Hardware drivers
+  - [ ] Use defines instead of union/structs for enc registers in driver.
+  - [ ] Remove addr arg from transmit packet in enc driver.
+  - [ ] Return all errors from enc driver and mask them outside.
+  - [ ] Rewrite spi write/read to be more high level to ensure read buffer is always cleaned up and support buffers.
+
+- [ ] Repeater logic (2 controllers)
+  - [ ] Add another controller to loop.
+  - [ ] Add internal packet buffer.
+  - [ ] Make enc driver non-blocking using DMA so the 2 controllers can work in parallel.
