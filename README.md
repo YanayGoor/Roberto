@@ -10,9 +10,21 @@ Home router implemented from scratch using STM32 microcontroller and ENC28J60 et
 ## Roadmap
 *Note: The roadmap is user-feature oriented and the OS features will be built througout the process as needed.*
 
+### TODOs
+- [ ] Hardware drivers
+  - [ ] Use defines instead of union/structs for enc registers in driver.
+  - [ ] Remove addr arg from transmit packet in enc driver.
+  - [ ] Return all errors from enc driver and mask them outside.
+  - [ ] Rewrite spi write/read to be more high level to ensure read buffer is always cleaned up and support buffers.
+
+- [ ] Repeater logic (2 controllers)
+  - [ ] Add another controller to loop.
+  - [ ] Add internal packet buffer.
+  - [ ] Make enc driver non-blocking using DMA so the 2 controllers can work in parallel.
+
 ### MVPs
 - [ ] Hardware drivers
-- [ ] Forwarding frames (1 rx port to 1 tx port)
+- [ ] Repeater logic (2 controllers)
 - [ ] Switching without MAC table
 - [ ] Switching
 - [ ] Routing & LAN
