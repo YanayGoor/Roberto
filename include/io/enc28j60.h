@@ -9,6 +9,7 @@ struct enc28j60_controller {
 	/* cached state */
 	int8_t selected_bank;
 	uint16_t next_pkt_addr;
+	uint16_t pkt_tx_status_addr;
 	/* parameters */
 	bool full_duplex;
 	uint16_t max_frame_length;
@@ -89,10 +90,9 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 uint16_t enc28j60_packets_received(struct enc28j60_controller *enc);
 bool enc28j60_check_error(struct enc28j60_controller *enc);
 bool enc28j60_check_tx_busy(struct enc28j60_controller *enc);
-void enc28j60_transmit_packet(struct enc28j60_controller *enc, uint16_t address,
+void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 							  const uint8_t *buffer, size_t size);
-void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
-									 uint16_t address,
-									 union enc28j60_pkt_tx_status *status);
+void enc28j60_last_transmitted_pkt_status(struct enc28j60_controller *enc,
+										  union enc28j60_pkt_tx_status *status);
 
 #endif // ENC28J60_H

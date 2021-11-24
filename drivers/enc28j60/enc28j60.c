@@ -29,8 +29,10 @@ void enc28j60_init(struct enc28j60_controller *enc,
 	enc->full_duplex = full_duplex;
 	enc->max_frame_length = max_frame_length;
 	enc->rx_buff_start = ENC28J60_LAST_ADDR - rx_buff_size;
+
 	enc->next_pkt_addr = enc->rx_buff_start;
 	enc->selected_bank = -1;
+	enc->pkt_tx_status_addr = 0;
 
 	// initialize spi slave
 	spi_slave_init(slave);
@@ -104,10 +106,9 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 }
 
 void enc28j60_transmit_packet(struct enc28j60_controller *enc,
-							  enc28j60_buff_addr_t address,
 							  const uint8_t *buffer, size_t size) {
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXST, address);
-	enc28j60_write_ctrl_reg(enc, ENC28J60_EWRPT, address);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXST, 0);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_EWRPT, 0);
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_write(enc);
@@ -120,15 +121,16 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 		enc28j60_finish_buff_write(enc);
 	})
 
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, address + size);
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ETXND, size);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1,
 							   REG_VALUE(econ1, .txrts = 1));
+
+	enc->pkt_tx_status_addr = size + 1;
 }
 
-void enc28j60_packet_transmit_status(struct enc28j60_controller *enc,
-									 enc28j60_buff_addr_t address,
-									 union enc28j60_pkt_tx_status *status) {
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ERDPT, address);
+void enc28j60_last_transmitted_pkt_status(
+	struct enc28j60_controller *enc, union enc28j60_pkt_tx_status *status) {
+	enc28j60_write_ctrl_reg(enc, ENC28J60_ERDPT, enc->pkt_tx_status_addr);
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		enc28j60_begin_buff_read(enc);

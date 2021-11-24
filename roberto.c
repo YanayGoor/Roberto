@@ -100,7 +100,7 @@ void enc_poll(void *enc_arg) {
 		if (!enc28j60_check_tx_busy(enc)) {
 			memcpy(buff, buff + ETHERNOT_LEN, ETHERNOT_LEN);
 			memcpy(buff + ETHERNOT_LEN, src_mac, ETHERNOT_LEN);
-			enc28j60_transmit_packet(enc, 0, (uint8_t *)buff, hdr->byte_count);
+			enc28j60_transmit_packet(enc, (uint8_t *)buff, hdr->byte_count);
 		}
 	}
 }
