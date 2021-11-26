@@ -33,9 +33,9 @@ sudo apt install gcc-arm-none-eabi stlink-tools cmake
 
 ## TODOs
 - [ ] Hardware drivers
-  - [ ] Use defines instead of union/structs for enc registers in driver.
-  - [ ] Remove addr arg from transmit packet in enc driver.
-  - [ ] Return all errors from enc driver and mask them outside.
+  - [X] Use defines instead of union/structs for enc registers in driver.
+  - [X] Remove addr arg from transmit packet in enc driver.
+  - [X] Return all errors from enc driver and mask them outside.
   - [ ] Rewrite spi write/read to be more high level to ensure read buffer is always cleaned up and support buffers.
 
 - [ ] Repeater logic (2 controllers)
