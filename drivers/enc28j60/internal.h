@@ -6,12 +6,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define ENC28J60_LAST_ADDR ((enc28j60_buff_addr_t)0x1fff)
+#define ENC28J60_LAST_ADDR ((buff_addr_t)0x1fff)
 
 #define ENC28J60_BBIPG_DEFAULT(full_duplex) (full_duplex ? 0x15 : 0x12)
 #define ENC28J60_IPG_DEFAULT(full_duplex)	(full_duplex ? 0x12 : 0x0c12)
 
-typedef uint16_t enc28j60_buff_addr_t;
+typedef uint16_t buff_addr_t;
 
 union enc28j60_opcode {
 	struct {
@@ -24,133 +24,99 @@ union enc28j60_opcode {
 struct enc28j60_ctrl_reg {
 	bool shared; /* true is register can be accessed from all banks */
 	uint8_t bank : 2;
-	uint8_t address : 5;
+	uint8_t addr : 5;
 	bool wide;		 /* true if value is split to low and high registers */
 	bool dummy_byte; /* true if value is split to low and high registers */
 };
 
-union enc28j60_econ2 {
-	struct {
-		uint8_t reserved1 : 3;
-		uint8_t vrps : 1;
-		uint8_t reserved2 : 1;
-		uint8_t pwrsv : 1;
-		uint8_t pktdec : 1;
-		uint8_t autoinc : 1;
-	};
-	uint8_t serialized;
-};
+#define EIR_RXERIF 1
+#define EIR_TXERIF (1 << 1)
+#define EIR_TXIF   (1 << 3)
+#define EIR_LINKIF (1 << 4)
+#define EIR_DMAIF  (1 << 5)
+#define EIR_PKTIF  (1 << 6)
 
-union enc28j60_econ1 {
-	struct {
-		uint8_t bsel : 2;
-		uint8_t rxen : 1;
-		uint8_t txrts : 1;
-		uint8_t csumen : 1;
-		uint8_t dmast : 1;
-		uint8_t rxrst : 1;
-		uint8_t txrst : 1;
-	};
-	uint8_t serialized;
-};
+#define ECON2_VRPS	  (1 << 3)
+#define ECON2_PWRSV	  (1 << 5)
+#define ECON2_PKTDEC  (1 << 6)
+#define ECON2_AUTOINC (1 << 7)
 
-union enc28j60_macon1 {
-	struct {
-		uint8_t marxen : 1;
-		uint8_t passall : 1;
-		uint8_t rxpaus : 1;
-		uint8_t txpaus : 1;
-	};
-	uint8_t serialized;
-};
+#define ECON1_BSEL	 0b11
+#define ECON1_RXEN	 (1 << 2)
+#define ECON1_TXRTS	 (1 << 3)
+#define ECON1_CSUMEN (1 << 4)
+#define ECON1_DMAST	 (1 << 5)
+#define ECON1_RXRST	 (1 << 6)
+#define ECON1_TXRST	 (1 << 7)
 
-union enc28j60_macon3 {
-	struct {
-		uint8_t fuldpx : 1;
-		uint8_t frmlnen : 1;
-		uint8_t hfrmen : 1;
-		uint8_t phdren : 1;
-		uint8_t txcrcen : 1;
-		uint8_t padcfg : 3;
-	};
-	uint8_t serialized;
-};
+#define MACON1_MARXEN  1
+#define MACON1_PASSALL (1 << 1)
+#define MACON1_RXPAUS  (1 << 2)
+#define MACON1_TXPAUS  (1 << 3)
 
-union enc28j60_macon4 {
-	struct {
-		uint8_t reserved : 4;
-		uint8_t nobkoff : 1;
-		uint8_t bpen : 1;
-		uint8_t defer : 1;
-	};
-	uint8_t serialized;
-};
+#define MACON3_FULDPX  1
+#define MACON3_FRMLNEN (1 << 1)
+#define MACON3_HFRMEN  (1 << 2)
+#define MACON3_PHDREN  (1 << 3)
+#define MACON3_TXCRCEN (1 << 4)
+#define MACON3_PADCFG  (0b111 << 5)
 
-union enc28j60_phcon1 {
-	struct {
-		uint8_t reserved : 8;
-		uint8_t pdpxmd : 1;
-		uint8_t reserved2 : 2;
-		uint8_t ppwrsv : 1;
-		uint8_t reserved3 : 2;
-		uint8_t ploopbk : 1;
-		uint8_t prst : 1;
-	};
-	uint16_t serialized;
-};
+#define MACON4_NOBKOFF (1 << 4)
+#define MACON4_BPEN	   (1 << 5)
+#define MACON4_DEFER   (1 << 6)
 
-#define ENC28J60_OPCODE(...) (((union enc28j60_opcode){__VA_ARGS__}).serialized)
-#define ENC28J60_REG(...)	 ((struct enc28j60_ctrl_reg){__VA_ARGS__})
+#define PHCON1_PDPXMD  (1 << 8)
+#define PHCON1_PPWRSV  (1 << 11)
+#define PHCON1_PLOOPBK (1 << 14)
+#define PHCON1_PRST	   (1 << 15)
 
-#define ENC28J60_RCR(arg) ENC28J60_OPCODE(.opcode = 0x0, .argument = arg)
-#define ENC28J60_RBM()	  ENC28J60_OPCODE(.opcode = 0x1, .argument = 0x1a)
-#define ENC28J60_WCR(arg) ENC28J60_OPCODE(.opcode = 0x2, .argument = arg)
-#define ENC28J60_WBM()	  ENC28J60_OPCODE(.opcode = 0x3, .argument = 0x1a)
-#define ENC28J60_BFS(arg) ENC28J60_OPCODE(.opcode = 0x4, .argument = arg)
-#define ENC28J60_BFC(arg) ENC28J60_OPCODE(.opcode = 0x5, .argument = arg)
-#define ENC28J60_SRC()	  ENC28J60_OPCODE(.opcode = 0x7, .argument = 0x1f)
+#define ENC28J60_POVERRIDE 1
 
-#define ENC28J60_ECON1 ENC28J60_REG(.shared = true, .address = 0x1f)
-#define ENC28J60_ECON2 ENC28J60_REG(.shared = true, .address = 0x1e)
-#define ENC28J60_ESTAT ENC28J60_REG(.shared = true, .address = 0x1d)
-#define ENC28J60_EIR   ENC28J60_REG(.shared = true, .address = 0x1c)
-#define ENC28J60_EIE   ENC28J60_REG(.shared = true, .address = 0x1b)
+#define DEF_OPCODE(...) (((union enc28j60_opcode){__VA_ARGS__}).serialized)
+#define DEF_REG(...)	((struct enc28j60_ctrl_reg){__VA_ARGS__})
 
-#define ENC28J60_MISTAT                                                        \
-	ENC28J60_REG(.bank = 3, .address = 0x0a, .dummy_byte = true)
+#define RCR_OPCODE(arg) DEF_OPCODE(.opcode = 0x0, .argument = arg)
+#define RBM_OPCODE()	DEF_OPCODE(.opcode = 0x1, .argument = 0x1a)
+#define WCR_OPCODE(arg) DEF_OPCODE(.opcode = 0x2, .argument = arg)
+#define WBM_OPCODE()	DEF_OPCODE(.opcode = 0x3, .argument = 0x1a)
+#define BFS_OPCODE(arg) DEF_OPCODE(.opcode = 0x4, .argument = arg)
+#define BFC_OPCODE(arg) DEF_OPCODE(.opcode = 0x5, .argument = arg)
+#define SRC_OPCODE()	DEF_OPCODE(.opcode = 0x7, .argument = 0x1f)
 
-#define ENC28J60_MIRD                                                          \
-	ENC28J60_REG(.bank = 2, .address = 0x18, .wide = true, .dummy_byte = true)
-#define ENC28J60_MIWR                                                          \
-	ENC28J60_REG(.bank = 2, .address = 0x16, .wide = true, .dummy_byte = true)
-#define ENC28J60_MIREGADR                                                      \
-	ENC28J60_REG(.bank = 2, .address = 0x14, .dummy_byte = true)
-#define ENC28J60_MICMD                                                         \
-	ENC28J60_REG(.bank = 2, .address = 0x12, .dummy_byte = true)
-#define ENC28J60_MAMXFL                                                        \
-	ENC28J60_REG(.bank = 2, .address = 0x0a, .wide = true, .dummy_byte = true)
-#define ENC28J60_MAIPG                                                         \
-	ENC28J60_REG(.bank = 2, .address = 0x06, .wide = true, .dummy_byte = true)
-#define ENC28J60_MABBIPG                                                       \
-	ENC28J60_REG(.bank = 2, .address = 0x04, .dummy_byte = true)
-#define ENC28J60_MACON4                                                        \
-	ENC28J60_REG(.bank = 2, .address = 0x03, .dummy_byte = true)
-#define ENC28J60_MACON3                                                        \
-	ENC28J60_REG(.bank = 2, .address = 0x02, .dummy_byte = true)
-#define ENC28J60_MACON1                                                        \
-	ENC28J60_REG(.bank = 2, .address = 0x00, .dummy_byte = true)
+#define ENC28J60_ECON1 DEF_REG(.shared = true, .addr = 0x1f)
+#define ENC28J60_ECON2 DEF_REG(.shared = true, .addr = 0x1e)
+#define ENC28J60_ESTAT DEF_REG(.shared = true, .addr = 0x1d)
+#define ENC28J60_EIR   DEF_REG(.shared = true, .addr = 0x1c)
+#define ENC28J60_EIE   DEF_REG(.shared = true, .addr = 0x1b)
 
-#define ENC28J60_EPKTCNT ENC28J60_REG(.bank = 1, .address = 0x19)
-#define ENC28J60_ERXFCON ENC28J60_REG(.bank = 1, .address = 0x18)
+#define MISTAT_REG DEF_REG(.bank = 3, .addr = 0x0a, .dummy_byte = true)
 
-#define ENC28J60_ERXWRPT ENC28J60_REG(.bank = 0, .address = 0x0e, .wide = true)
-#define ENC28J60_ERXRDPT ENC28J60_REG(.bank = 0, .address = 0x0c, .wide = true)
-#define ENC28J60_ERXND	 ENC28J60_REG(.bank = 0, .address = 0x0a, .wide = true)
-#define ENC28J60_ERXST	 ENC28J60_REG(.bank = 0, .address = 0x08, .wide = true)
-#define ENC28J60_ETXND	 ENC28J60_REG(.bank = 0, .address = 0x06, .wide = true)
-#define ENC28J60_ETXST	 ENC28J60_REG(.bank = 0, .address = 0x04, .wide = true)
-#define ENC28J60_EWRPT	 ENC28J60_REG(.bank = 0, .address = 0x02, .wide = true)
-#define ENC28J60_ERDPT	 ENC28J60_REG(.bank = 0, .address = 0x00, .wide = true)
+#define MIRD_REG                                                               \
+	DEF_REG(.bank = 2, .addr = 0x18, .wide = true, .dummy_byte = true)
+#define MIWR_REG                                                               \
+	DEF_REG(.bank = 2, .addr = 0x16, .wide = true, .dummy_byte = true)
+#define MIREGADR_REG DEF_REG(.bank = 2, .addr = 0x14, .dummy_byte = true)
+#define MICMD_REG	 DEF_REG(.bank = 2, .addr = 0x12, .dummy_byte = true)
+#define MAMXFL_REG                                                             \
+	DEF_REG(.bank = 2, .addr = 0x0a, .wide = true, .dummy_byte = true)
+#define MAIPG_REG                                                              \
+	DEF_REG(.bank = 2, .addr = 0x06, .wide = true, .dummy_byte = true)
+#define MABBIPG_REG DEF_REG(.bank = 2, .addr = 0x04, .dummy_byte = true)
+#define MACON4_REG	DEF_REG(.bank = 2, .addr = 0x03, .dummy_byte = true)
+#define MACON3_REG	DEF_REG(.bank = 2, .addr = 0x02, .dummy_byte = true)
+#define MACON1_REG	DEF_REG(.bank = 2, .addr = 0x00, .dummy_byte = true)
+
+#define EPKTCNT_REG DEF_REG(.bank = 1, .addr = 0x19)
+#define ERXFCON_REG DEF_REG(.bank = 1, .addr = 0x18)
+
+#define ERXWRPT_REG DEF_REG(.bank = 0, .addr = 0x0e, .wide = true)
+#define ERXRDPT_REG DEF_REG(.bank = 0, .addr = 0x0c, .wide = true)
+#define ERXND_REG	DEF_REG(.bank = 0, .addr = 0x0a, .wide = true)
+#define ERXST_REG	DEF_REG(.bank = 0, .addr = 0x08, .wide = true)
+#define ETXND_REG	DEF_REG(.bank = 0, .addr = 0x06, .wide = true)
+#define ETXST_REG	DEF_REG(.bank = 0, .addr = 0x04, .wide = true)
+#define EWRPT_REG	DEF_REG(.bank = 0, .addr = 0x02, .wide = true)
+#define ERDPT_REG	DEF_REG(.bank = 0, .addr = 0x00, .wide = true)
 
 void enc28j60_write_ctrl_reg(struct enc28j60_controller *enc,
 							 struct enc28j60_ctrl_reg reg, uint16_t value);

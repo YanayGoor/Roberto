@@ -36,7 +36,7 @@ const struct spi_params enc28j60_spi_params = {.sclk_port = &gpio_pb,
 											   .mosi_port = &gpio_pb,
 											   .mosi_pin = 5,
 											   .is_master = true,
-											   .baud_rate = 7};
+											   .baud_rate = 5};
 
 const struct spi_slave enc8j60_spi_slave = {
 	.ss_port = &gpio_pb,
@@ -100,7 +100,8 @@ void enc_poll(void *enc_arg) {
 		if (!enc28j60_check_tx_busy(enc)) {
 			memcpy(buff, buff + ETHERNOT_LEN, ETHERNOT_LEN);
 			memcpy(buff + ETHERNOT_LEN, src_mac, ETHERNOT_LEN);
-			enc28j60_transmit_packet(enc, (uint8_t *)buff, hdr->byte_count);
+			enc28j60_transmit_packet(enc, (uint8_t *)buff, hdr->byte_count,
+									 ENC28J60_PCRCEN);
 		}
 	}
 }
