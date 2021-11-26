@@ -7,6 +7,8 @@
 #define WAIT_50_NS()                                                           \
 	for (int i = 0; i < 50; i++) {}
 
+#define EIR_ERRORS (EIR_RXERIF | EIR_TXERIF)
+
 static inline buff_addr_t get_rx_buff_size(uint8_t rx_weight,
 										   uint8_t tx_weight) {
 	return ENC28J60_LAST_ADDR / (rx_weight + tx_weight) * rx_weight;
@@ -143,10 +145,10 @@ uint16_t enc28j60_packets_received(struct enc28j60_controller *enc) {
 	return enc28j60_read_ctrl_reg(enc, EPKTCNT_REG);
 }
 
-bool enc28j60_check_error(struct enc28j60_controller *enc) {
-	return enc28j60_read_ctrl_reg(enc, ENC28J60_EIR) & EIR_RXERIF;
+bool enc28j60_get_errors(struct enc28j60_controller *enc) {
+	return enc28j60_read_ctrl_reg(enc, ENC28J60_EIR) & EIR_ERRORS;
 }
 
-bool enc28j60_check_tx_busy(struct enc28j60_controller *enc) {
+bool enc28j60_get_tx_busy(struct enc28j60_controller *enc) {
 	return enc28j60_read_ctrl_reg(enc, ENC28J60_ECON1) & ECON1_TXRTS;
 }

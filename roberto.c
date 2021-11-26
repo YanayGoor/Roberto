@@ -69,7 +69,7 @@ const uint8_t src_mac[ETHERNOT_LEN] = {1, 3, 3, 7, 9, 9};
 
 void enc_poll(void *enc_arg) {
 	int bytes_read;
-	unsigned int packets_read;
+	unsigned int packets_read = 0;
 	struct enc28j60_controller *enc = enc_arg;
 	struct enc28j60_pkt_rx_hdr *hdr =
 		malloc(sizeof(struct enc28j60_pkt_rx_hdr));
@@ -77,9 +77,9 @@ void enc_poll(void *enc_arg) {
 
 	while (1) {
 		sched_yield();
-		bool err = enc28j60_check_error(enc);
+		bool rx_err = enc28j60_get_errors(enc) & ENC28J60_RX_ERR;
 		uint8_t packets_received = enc28j60_packets_received(enc);
-		if (err) { turn_led_on(onboard_LEDs[2]); }
+		if (rx_err) { turn_led_on(onboard_LEDs[2]); }
 		if (!packets_received) {
 			turn_led_on(onboard_LEDs[0]);
 			continue;
@@ -97,7 +97,7 @@ void enc_poll(void *enc_arg) {
 		turn_led_off(onboard_LEDs[2]);
 		packets_read++;
 
-		if (!enc28j60_check_tx_busy(enc)) {
+		if (!enc28j60_get_tx_busy(enc)) {
 			memcpy(buff, buff + ETHERNOT_LEN, ETHERNOT_LEN);
 			memcpy(buff + ETHERNOT_LEN, src_mac, ETHERNOT_LEN);
 			enc28j60_transmit_packet(enc, (uint8_t *)buff, hdr->byte_count,

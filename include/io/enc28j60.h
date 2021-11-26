@@ -7,6 +7,9 @@
 #define ENC28J60_PPADEN	 (1 << 2)
 #define ENC28J60_PHUGEEN (1 << 3)
 
+#define ENC28J60_RX_ERR 1
+#define ENC28J60_TX_ERR (1 << 1)
+
 struct enc28j60_controller {
 	const struct spi_module *module;
 	const struct spi_slave *slave;
@@ -74,8 +77,8 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size);
 uint16_t enc28j60_packets_received(struct enc28j60_controller *enc);
-bool enc28j60_check_error(struct enc28j60_controller *enc);
-bool enc28j60_check_tx_busy(struct enc28j60_controller *enc);
+bool enc28j60_get_errors(struct enc28j60_controller *enc);
+bool enc28j60_get_tx_busy(struct enc28j60_controller *enc);
 void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 							  const uint8_t *buffer, size_t size,
 							  uint8_t flags);
