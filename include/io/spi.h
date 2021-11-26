@@ -64,15 +64,15 @@ const struct spi_module spi_module_3;
 
 void spi_init(const struct spi_module *module, struct spi_params params);
 
-void spi_write(const struct spi_module *module, uint8_t data);
+void spi_write(const struct spi_module *module, uint8_t byte);
 uint8_t spi_read(const struct spi_module *module);
+uint8_t spi_exchange(const struct spi_module *module, uint8_t byte);
 
-bool spi_read_ready(const struct spi_module *module);
-bool spi_write_ready(const struct spi_module *module);
-bool spi_is_busy(const struct spi_module *module);
-void spi_wait_read_ready(const struct spi_module *module);
-void spi_wait_write_ready(const struct spi_module *module);
-void spi_wait_not_busy(const struct spi_module *module);
+void spi_write_buff(const struct spi_module *module, const uint8_t *buff,
+					size_t size);
+void spi_read_buff(const struct spi_module *module, uint8_t *buff, size_t size);
+void spi_exchange_buff(const struct spi_module *module, const uint8_t *transmit,
+					   uint8_t *receive, size_t size);
 
 void spi_slave_init(const struct spi_slave *slave);
 void spi_slave_select(const struct spi_slave *slave);

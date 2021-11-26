@@ -4,9 +4,44 @@
 #include <io/spi.h>
 #include <stdint.h>
 
+static void spi_write_reg(const struct spi_module *module, uint8_t data) {
+	module->regs->DR = data;
+}
+
+static uint8_t spi_read_reg(const struct spi_module *module) {
+	return module->regs->DR;
+}
+
+static bool spi_is_read_ready(const struct spi_module *module) {
+	return module->regs->SR & SPI_SR_RXNE;
+}
+
+static bool spi_is_write_ready(const struct spi_module *module) {
+	return module->regs->SR & SPI_SR_TXE;
+}
+
+static void spi_wait_read_ready(const struct spi_module *module) {
+	while (!spi_is_read_ready(module)) {};
+}
+
+static void spi_wait_write_ready(const struct spi_module *module) {
+	while (!spi_is_write_ready(module)) {};
+}
+
 static void enable_module_clock(const struct spi_module *module) {
 	RCC->APB1ENR |= module->apb1_enr;
 	RCC->APB2ENR |= module->apb2_enr;
+}
+
+static void seq_queue_next(const struct spi_module *module,
+						   uint8_t first_byte) {
+	spi_wait_write_ready(module);
+	spi_write_reg(module, first_byte);
+}
+
+static uint8_t seq_read_previous(const struct spi_module *module) {
+	spi_wait_read_ready(module);
+	return spi_read_reg(module);
 }
 
 void spi_init(const struct spi_module *module, const struct spi_params params) {
@@ -41,36 +76,67 @@ void spi_init(const struct spi_module *module, const struct spi_params params) {
 	module->regs->CR1 |= SPI_CR1_SPE;
 }
 
-void spi_write(const struct spi_module *module, uint8_t data) {
-	module->regs->DR = data;
-}
-
-bool spi_read_ready(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_RXNE;
-}
-
-bool spi_write_ready(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_TXE;
-}
-
-bool spi_is_busy(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_BSY;
-}
-
-void spi_wait_read_ready(const struct spi_module *module) {
-	while (!spi_read_ready(module)) {};
-}
-
-void spi_wait_write_ready(const struct spi_module *module) {
-	while (!spi_write_ready(module)) {};
-}
-
-void spi_wait_not_busy(const struct spi_module *module) {
-	while (spi_is_busy(module)) {};
+void spi_write(const struct spi_module *module, uint8_t byte) {
+	spi_exchange(module, byte);
 }
 
 uint8_t spi_read(const struct spi_module *module) {
-	return module->regs->DR;
+	return spi_exchange(module, 0);
+}
+
+uint8_t spi_exchange(const struct spi_module *module, uint8_t byte) {
+	spi_wait_write_ready(module);
+	spi_write_reg(module, byte);
+	spi_wait_read_ready(module);
+	return spi_read_reg(module);
+}
+
+void spi_write_buff(const struct spi_module *module, const uint8_t *buff,
+					size_t size) {
+	if (size == 0) { return; }
+
+	seq_queue_next(module, buff[0]);
+	for (size_t index = 1; index < size; index++) {
+		/* for each byte in the sequence execpt the first or the last, we first
+		 * queue the byte for transmission by writing it into the double buffer,
+		 * then after the byte starts to get shifted out we can read the
+		 * previous value. */
+		seq_queue_next(module, buff[index]);
+		seq_read_previous(module);
+	}
+	seq_read_previous(module);
+}
+
+void spi_read_buff(const struct spi_module *module, uint8_t *buff,
+				   size_t size) {
+	if (size == 0) { return; }
+
+	seq_queue_next(module, 0);
+	for (size_t index = 1; index < size; index++) {
+		/* for each byte in the sequence that is not the first or the last,	we
+		 * first queue the byte for transmission by writing it into the	double
+		 * buffer, then after the byte starts to get shifted out we can read the
+		 * previous value. */
+		seq_queue_next(module, 0);
+		buff[index - 1] = seq_read_previous(module);
+	}
+	buff[size - 1] = seq_read_previous(module);
+}
+
+void spi_exchange_buff(const struct spi_module *module, const uint8_t *transmit,
+					   uint8_t *receive, size_t size) {
+	if (size == 0) { return; }
+
+	seq_queue_next(module, transmit[0]);
+	for (size_t index = 1; index < size; index++) {
+		/* for each byte in the sequence that is not the first or the last,	we
+		 * first queue the byte for transmission by writing it into the	double
+		 * buffer, then after the byte starts to get shifted out we can read the
+		 * previous value. */
+		seq_queue_next(module, transmit[index]);
+		receive[index - 1] = seq_read_previous(module);
+	}
+	receive[size - 1] = seq_read_previous(module);
 }
 
 void spi_slave_select(const struct spi_slave *slave) {
