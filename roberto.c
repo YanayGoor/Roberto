@@ -1,4 +1,5 @@
 #include <io/gpio.h>
+#include <sched/task.h>
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
@@ -36,6 +37,8 @@ int main() {
 #else
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 #endif
+	sched_init();
+
 	while (1) {
 		for (int i = 0; i < SIZEOF_ARR(onboard_LEDs); i++) {
 			gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[i].pin);
@@ -44,7 +47,8 @@ int main() {
 		}
 		for (int i = 0; i < FLASHES; i++) {
 			delay(SHORT_DELAY);
-			gpio_write_partial(&gpio_pd, -1, LEDS_MASK);
+			sched_yield();
+			// gpio_write_partial(&gpio_pd, -1, LEDS_MASK);
 			delay(SHORT_DELAY);
 			gpio_write_partial(&gpio_pd, 0, LEDS_MASK);
 		}

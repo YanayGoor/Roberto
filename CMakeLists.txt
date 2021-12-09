@@ -9,11 +9,14 @@ add_executable(Roberto
     stm32f4/startup_stm32f4xx.s
     stm32f4/system_stm32f4xx.c
     drivers/gpio/gpio.c
+    sched/context_switch.s
+    sched/task.c
 )
 
 include_directories(include)
 
 set_property(SOURCE stm32f4/startup_stm32f4xx.s PROPERTY LANGUAGE C)
+set_property(SOURCE sched/context_switch.s PROPERTY LANGUAGE C)
 
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
