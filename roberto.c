@@ -1,24 +1,18 @@
 #include <io/gpio.h>
-#include <sched/task.h>
+#include <kernel/sched.h>
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
-#define SHORT_DELAY 800000
-#define LONG_DELAY	1600000
-
-#define FLASHES 3
+#define SHORT_DELAY	  1000
+#define LONG_DELAY	  500000
+#define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
 #define ORANGE_LED 13
 #define RED_LED	   14
 #define BLUE_LED   15
 
-#define GREEN_LED_MASK	(1 << GREEN_LED)
-#define ORANGE_LED_MASK (1 << ORANGE_LED)
-#define RED_LED_MASK	(1 << RED_LED)
-#define BLUE_LED_MASK	(1 << BLUE_LED)
-#define LEDS_MASK                                                              \
-	(GREEN_LED_MASK | ORANGE_LED_MASK | RED_LED_MASK | BLUE_LED_MASK)
+unsigned int delay_weight = LONG_DELAY;
 
 const struct gpio_pin onboard_LEDs[] = {
 	{.pin = GREEN_LED, .mode = GPIO_OUTPUT},
@@ -31,6 +25,16 @@ void delay(int weight) {
 	for (int i = 0; i < weight; i++) {}
 }
 
+void flash(void *color_idx) {
+	const struct gpio_pin *gpio_pin = onboard_LEDs + (uint32_t)color_idx;
+	while (1) {
+		gpio_write_partial(&gpio_pd, -1, 1 << gpio_pin->pin);
+		delay(delay_weight);
+		gpio_write_partial(&gpio_pd, 0, 1 << gpio_pin->pin);
+		sched_yield();
+	}
+}
+
 int main() {
 #ifdef BULK
 	gpio_init_bulk(&gpio_pd, LEDS_MASK, GPIO_OUTPUT);
@@ -39,19 +43,13 @@ int main() {
 #endif
 	sched_init();
 
+	sched_start_task(flash, (void *)0);
+	sched_start_task(flash, (void *)1);
+	sched_start_task(flash, (void *)2);
+	sched_start_task(flash, (void *)3);
+
 	while (1) {
-		for (int i = 0; i < SIZEOF_ARR(onboard_LEDs); i++) {
-			gpio_write_partial(&gpio_pd, -1, 1 << onboard_LEDs[i].pin);
-			delay(LONG_DELAY);
-			gpio_write_partial(&gpio_pd, 0, 1 << onboard_LEDs[i].pin);
-		}
-		for (int i = 0; i < FLASHES; i++) {
-			delay(SHORT_DELAY);
-			sched_yield();
-			// gpio_write_partial(&gpio_pd, -1, LEDS_MASK);
-			delay(SHORT_DELAY);
-			gpio_write_partial(&gpio_pd, 0, LEDS_MASK);
-		}
-		delay(SHORT_DELAY);
+		sched_yield();
+		if (delay_weight > SHORT_DELAY) { delay_weight *= DELAY_PORTION; }
 	}
 }

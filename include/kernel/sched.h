@@ -1,5 +1,5 @@
-#ifndef ROBERTO_TASK_H
-#define ROBERTO_TASK_H
+#ifndef ROBERTO_SCHED_H
+#define ROBERTO_SCHED_H
 
 #include <stdint.h>
 #include <sys/queue.h>
@@ -11,7 +11,7 @@ struct task {
 };
 
 void sched_init(void);
-
 void sched_yield(void);
+void sched_start_task(void(function)(void *), void *arg);
 
-#endif // ROBERTO_TASK_H
+#endif // ROBERTO_SCHED_H

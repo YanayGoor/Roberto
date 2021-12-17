@@ -1,7 +1,7 @@
 .syntax unified
 
 .extern curr_task
-.extern replace_curr_task
+.extern _sched_replace_curr_task
 
 .macro __disable_irq reg
     mov \reg, #0xef
@@ -22,9 +22,9 @@ curr_task_proxy:
     .type    curr_task_proxy,%object
     .word    curr_task
 
-context_switch:
-    .globl   context_switch
-    .type    context_switch,%function
+PendSV_Handler:
+    .globl   PendSV_Handler
+    .type    PendSV_Handler,%function
     .fnstart
 
     stmdb sp!, {r4-r11, r14} @ db - decrement downwards
@@ -40,7 +40,7 @@ context_switch:
     __disable_irq reg=r0
     dsb
     isb
-    bl replace_curr_task
+    bl _sched_replace_curr_task
     __enable_irq reg=r0
     ldmia sp!, {r3}
 
