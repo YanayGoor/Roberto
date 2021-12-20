@@ -4,10 +4,13 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+enum task_state { TASK_RUNNING, TASK_DONE };
+
 struct task {
 	uint8_t *stack_top;
 	uint8_t *stack_mem_start;
 	LIST_ENTRY(task) tasks;
+	enum task_state state;
 };
 
 void sched_init(void);

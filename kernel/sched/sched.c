@@ -6,14 +6,24 @@
 #include <stdlib.h>
 #include <sys/queue.h>
 
+#define LIST_NEXT_CIRCULAR(head, elm, field)                                   \
+	(LIST_NEXT(curr_task, tasks) == NULL ? LIST_FIRST(head)                    \
+										 : LIST_NEXT(curr_task, tasks))
+
 LIST_HEAD(, task) tasks = LIST_HEAD_INITIALIZER(tasks);
 struct task *curr_task = NULL;
 
 extern void context_switch(void);
 
 void _sched_replace_curr_task(void) {
-	curr_task = LIST_NEXT(curr_task, tasks);
-	if (curr_task == NULL) { curr_task = LIST_FIRST(&tasks); }
+	struct task *next_task = LIST_NEXT_CIRCULAR(&tasks, curr_task, tasks);
+	if (curr_task->state == TASK_DONE) { LIST_REMOVE(curr_task, tasks); }
+	curr_task = next_task;
+}
+
+void _sched_cleanup_curr_task(void) {
+	curr_task->state = TASK_DONE;
+	sched_yield();
 }
 
 void sched_init(void) {
@@ -36,6 +46,7 @@ void sched_start_task(void(function)(void *), void *arg) {
 	suspended_stack->suspended_at_lr =
 		EXC_RETURN_MSP | EXC_RETURN_THREAD | EXC_RETURN_FPC_OFF;
 
+	suspended_stack->lr = (uint32_t)_sched_cleanup_curr_task;
 	suspended_stack->return_addr = (uint32_t)function;
 	suspended_stack->r0 = (uint32_t)arg;
 	// lsb of function pointer determines if the function is in thumb
@@ -43,5 +54,6 @@ void sched_start_task(void(function)(void *), void *arg) {
 
 	task->stack_mem_start = stack;
 	task->stack_top = (uint8_t *)suspended_stack;
+	task->state = TASK_RUNNING;
 	LIST_INSERT_HEAD(&tasks, task, tasks);
 }

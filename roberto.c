@@ -4,7 +4,7 @@
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
 #define SHORT_DELAY	  1000
-#define LONG_DELAY	  500000
+#define LONG_DELAY	  200000
 #define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
@@ -27,7 +27,7 @@ void delay(int weight) {
 
 void flash(void *color_idx) {
 	const struct gpio_pin *gpio_pin = onboard_LEDs + (uint32_t)color_idx;
-	while (1) {
+	while (gpio_pin->pin != GREEN_LED || delay_weight > SHORT_DELAY) {
 		gpio_write_partial(&gpio_pd, -1, 1 << gpio_pin->pin);
 		delay(delay_weight);
 		gpio_write_partial(&gpio_pd, 0, 1 << gpio_pin->pin);
