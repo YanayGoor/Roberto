@@ -1,5 +1,7 @@
 #include <io/gpio.h>
+#include <io/spi.h>
 #include <kernel/sched.h>
+#include <stdbool.h>
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
@@ -19,6 +21,16 @@ const struct gpio_pin onboard_LEDs[] = {
 	{.pin = ORANGE_LED, .mode = GPIO_OUTPUT},
 	{.pin = RED_LED, .mode = GPIO_OUTPUT},
 	{.pin = BLUE_LED, .mode = GPIO_OUTPUT},
+};
+
+const struct spi_params enc28j60_spi_module = {
+	.sclk_port = &gpio_pa,
+	.sclk_pin = 5,
+	.miso_port = &gpio_pa,
+	.miso_pin = 6,
+	.mosi_port = &gpio_pa,
+	.mosi_pin = 7,
+	.is_master = true,
 };
 
 void delay(int weight) {
@@ -41,6 +53,8 @@ int main() {
 #else
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 #endif
+	spi_init(&spi_module_1, enc28j60_spi_module);
+
 	sched_init();
 
 	sched_start_task(flash, (void *)0);
