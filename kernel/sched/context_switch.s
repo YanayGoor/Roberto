@@ -30,6 +30,10 @@ PendSV_Handler:
     stmdb sp!, {r4-r11, r14} @ db - decrement downwards
                              @ !  - save resulting pointer back to sp
 
+    tst r14, #0x10           @ if the task has FPU enabled, push high vfp registers.
+    it eq
+    vstmdbeq r0!, {s16-s31}
+
     ldr r3, curr_task_proxy @ load proxy
     ldr r2, [r3]            @ dereference proxy
 
@@ -53,6 +57,10 @@ PendSV_Handler:
     isb
 
     ldmia sp!, {r4-r11, r14} @ ia - increment after
+
+    tst r14, #0x10
+    it eq
+    vldmiaeq sp!, {s16-s31}
 
     bx r14
     .fnend
