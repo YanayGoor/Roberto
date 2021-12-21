@@ -1,3 +1,5 @@
+#include "kernel/time.h"
+
 #include <io/enc28j60.h>
 #include <io/gpio.h>
 #include <io/spi.h>
@@ -8,8 +10,8 @@
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
-#define SHORT_DELAY	  1000
-#define LONG_DELAY	  200000
+#define SHORT_DELAY	  10000
+#define LONG_DELAY	  2000000
 #define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
@@ -55,13 +57,22 @@ void turn_led_off(struct gpio_pin led) {
 	gpio_write_partial(&gpio_pd, 0, 1 << led.pin);
 }
 
-void flash(void *color_idx) {
+// void flash(void *color_idx) {
+//	const struct gpio_pin gpio_pin = onboard_LEDs[(uint32_t)color_idx];
+//	while (gpio_pin.pin != GREEN_LED || delay_weight > SHORT_DELAY) {
+//		turn_led_on(gpio_pin);
+//		delay(delay_weight);
+//		turn_led_off(gpio_pin);
+//		sched_yield();
+//	}
+//}
+void flash_sleep(void *color_idx) {
 	const struct gpio_pin gpio_pin = onboard_LEDs[(uint32_t)color_idx];
-	while (gpio_pin.pin != GREEN_LED || delay_weight > SHORT_DELAY) {
+	while (1) {
 		turn_led_on(gpio_pin);
-		delay(delay_weight);
+		sleep(2);
 		turn_led_off(gpio_pin);
-		sched_yield();
+		sleep(2);
 	}
 }
 
@@ -114,19 +125,19 @@ int main() {
 	spi_init(&spi_module_1, enc28j60_spi_params);
 
 	// TODO: separate init to struct and hardware or automatically reset
-	enc28j60_init(enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
-				  1, 1);
-	enc28j60_reset(enc);
-	delay(LONG_DELAY);
-	enc28j60_init(enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
-				  1, 1);
+	//	enc28j60_init(enc, &spi_module_1, &enc8j60_spi_slave, true,
+	// MAX_FRAME_LEN, 				  1, 1); 	enc28j60_reset(enc);
+	// delay(LONG_DELAY); 	enc28j60_init(enc, &spi_module_1,
+	// &enc8j60_spi_slave,
+	// true, MAX_FRAME_LEN, 				  1, 1);
 	sched_init();
+	time_init();
 
-	// sched_start_task(flash, (void *)0);
-	// sched_start_task(flash, (void *)1);
-	// sched_start_task(flash, (void *)2);
-	// sched_start_task(flash, (void *)3);
-	sched_start_task(enc_poll, enc);
+	sched_start_task(flash_sleep, (void *)0);
+	sched_start_task(flash_sleep, (void *)1);
+	sched_start_task(flash_sleep, (void *)2);
+	sched_start_task(flash_sleep, (void *)3);
+	//	sched_start_task(enc_poll, enc);
 
 	while (1) {
 		sched_yield();

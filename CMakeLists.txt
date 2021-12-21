@@ -14,6 +14,8 @@ add_executable(Roberto
     drivers/gpio/gpio.c
     kernel/sched/context_switch.s
     kernel/sched/sched.c
+    kernel/sched/future.c
+    kernel/time.c
 )
 
 include_directories(include)
@@ -28,6 +30,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -Wall -T${PROJECT_SOURCE_DIR}/stm32f4
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard -mfpu=fpv4-sp-d16")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --specs=nosys.specs")
+
+add_compile_definitions(HSE_VALUE=8000000 PLL_M=8)
 
 # TODO: make this work
 #set(LINKER_SCRIPT stm32f4/stm32_flash.ld)
