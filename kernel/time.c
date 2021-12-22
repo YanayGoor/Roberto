@@ -1,6 +1,7 @@
 #include <stm32f4/stm32f4xx.h>
 
 #include <kernel/future.h>
+#include <kernel/time.h>
 #include <sys/queue.h>
 
 #ifndef TICKS_PER_SEC
@@ -21,17 +22,17 @@
 	LIST_INSERT_BEFORE(listelm, elm, entry)
 
 struct sleeping_task {
-	unsigned int wakeup_at;
+	rtime_t wakeup_at;
 	struct future future;
 	STLIST_ENTRY(sleeping_task) entry;
 };
 
-unsigned int curr_seconds = 0;
-unsigned int curr_ticks = 0;
+struct {
+	uint32_t seconds;
+	uint32_t ticks;
+} now = {0, 0};
 
 STLIST_HEAD(, sleeping_task) sleeping_tasks = STLIST_HEAD_INITIALIZER();
-
-unsigned int get_time(void);
 
 static void insert_to_sleeping_tasks(struct sleeping_task *elm) {
 	struct sleeping_task *listelm;
@@ -52,7 +53,7 @@ static void insert_to_sleeping_tasks(struct sleeping_task *elm) {
 }
 
 static void wakeup_sleeping_tasks() {
-	unsigned int time = get_time();
+	rtime_t time = get_time();
 	struct sleeping_task *entry;
 	STLIST_FOREACH(entry, &sleeping_tasks) {
 		if (entry->wakeup_at > time) { break; }
@@ -61,11 +62,8 @@ static void wakeup_sleeping_tasks() {
 }
 
 void SysTick_Handler(void) {
-	curr_ticks++;
-	if (curr_ticks == TICKS_PER_SEC) {
-		curr_ticks = 0;
-		curr_seconds++;
-	}
+	now.ticks = (now.ticks + 1) % TICKS_PER_SEC;
+	now.seconds += (now.ticks == 0);
 	wakeup_sleeping_tasks();
 }
 
@@ -73,8 +71,8 @@ void time_init(void) {
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC);
 }
 
-unsigned int get_time(void) {
-	return curr_seconds * MS_PER_SEC + curr_ticks * MS_PER_SEC / TICKS_PER_SEC;
+rtime_t get_time(void) {
+	return now.seconds * MS_PER_SEC + now.ticks * MS_PER_SEC / TICKS_PER_SEC;
 }
 
 void sleep(unsigned int seconds) {

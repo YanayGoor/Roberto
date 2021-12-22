@@ -1,8 +1,12 @@
 #ifndef ROBERTO_TIME_H
 #define ROBERTO_TIME_H
 
+#include <stdint.h>
+
+typedef uint64_t rtime_t;
+
 void time_init(void);
-unsigned int get_time(void);
+rtime_t get_time(void);
 void sleep(unsigned int seconds);
 
 #endif // ROBERTO_TIME_H
