@@ -3,17 +3,22 @@
 #include <kernel/future.h>
 #include <sys/queue.h>
 
+#ifndef TICKS_PER_SEC
 #define TICKS_PER_SEC 10000
-#define MS_PER_SEC	  1000
+#endif // TICKS_PER_SEC
 
-#define STLIST_ENTRY(type)					 LIST_ENTRY(type)
-#define STLIST_HEAD(name, type)				 LIST_HEAD(name, type)
-#define STLIST_HEAD_INITIALIZER(head)		 LIST_HEAD_INITIALIZER(head)
-#define STLIST_FOREACH(var, head)			 LIST_FOREACH(var, head, entry)
-#define STLIST_EMPTY(head)					 LIST_EMPTY(head)
-#define STLIST_INSERT_HEAD(head, elm, field) LIST_INSERT_HEAD(head, elm, entry)
-#define STLIST_NEXT(elm)					 LIST_NEXT(elm, entry)
-#define STLIST_INSERT_AFTER(listelm, elm)	 LIST_INSERT_AFTER(listelm, elm, entry)
+#define MS_PER_SEC 1000
+
+#define STLIST_ENTRY(type)				  LIST_ENTRY(type)
+#define STLIST_HEAD(name, type)			  LIST_HEAD(name, type)
+#define STLIST_HEAD_INITIALIZER(head)	  LIST_HEAD_INITIALIZER(head)
+#define STLIST_FOREACH(var, head)		  LIST_FOREACH(var, head, entry)
+#define STLIST_EMPTY(head)				  LIST_EMPTY(head)
+#define STLIST_INSERT_HEAD(head, elm)	  LIST_INSERT_HEAD(head, elm, entry)
+#define STLIST_REMOVE(elm)				  LIST_REMOVE(elm, entry)
+#define STLIST_INSERT_AFTER(listelm, elm) LIST_INSERT_AFTER(listelm, elm, entry)
+#define STLIST_INSERT_BEFORE(listelm, elm)                                     \
+	LIST_INSERT_BEFORE(listelm, elm, entry)
 
 struct sleeping_task {
 	unsigned int wakeup_at;
@@ -28,7 +33,25 @@ STLIST_HEAD(, sleeping_task) sleeping_tasks = STLIST_HEAD_INITIALIZER();
 
 unsigned int get_time(void);
 
-static void wakeup_sleeping() {
+static void insert_to_sleeping_tasks(struct sleeping_task *elm) {
+	struct sleeping_task *listelm;
+	struct sleeping_task *last;
+
+	if (STLIST_EMPTY(&sleeping_tasks)) {
+		STLIST_INSERT_HEAD(&sleeping_tasks, elm);
+		return;
+	}
+	STLIST_FOREACH(listelm, &sleeping_tasks) {
+		last = listelm;
+		if (listelm->wakeup_at > elm->wakeup_at) {
+			STLIST_INSERT_BEFORE(listelm, elm);
+			return;
+		}
+	}
+	STLIST_INSERT_AFTER(last, elm);
+}
+
+static void wakeup_sleeping_tasks() {
 	unsigned int time = get_time();
 	struct sleeping_task *entry;
 	STLIST_FOREACH(entry, &sleeping_tasks) {
@@ -43,7 +66,7 @@ void SysTick_Handler(void) {
 		curr_ticks = 0;
 		curr_seconds++;
 	}
-	wakeup_sleeping();
+	wakeup_sleeping_tasks();
 }
 
 void time_init(void) {
@@ -56,23 +79,12 @@ unsigned int get_time(void) {
 
 void sleep(unsigned int seconds) {
 	struct sleeping_task *task = malloc(sizeof(struct sleeping_task));
-	FUTURE_INIT(&task->future);
 	task->wakeup_at = get_time() + seconds * MS_PER_SEC;
-	if (STLIST_EMPTY(&sleeping_tasks)) {
-		STLIST_INSERT_HEAD(&sleeping_tasks, task, entry);
-	} else {
-		struct sleeping_task *entry;
-		STLIST_FOREACH(entry, &sleeping_tasks) {
-			if (STLIST_NEXT(entry) == NULL ||
-				STLIST_NEXT(entry)->wakeup_at < task->wakeup_at) {
-				STLIST_INSERT_AFTER(entry, task);
-				break;
-			}
-		}
-	}
+	task->future = FUTURE_INITIALIZER(&task->future);
+	insert_to_sleeping_tasks(task);
 
 	await(&task->future);
 
-	LIST_REMOVE(task, entry);
+	STLIST_REMOVE(task);
 	free(task);
 }
