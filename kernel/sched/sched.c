@@ -6,15 +6,11 @@
 #include <stdlib.h>
 #include <sys/queue.h>
 
-#define LIST_NEXT_CIRCULAR(head, elm, field)                                   \
-	(LIST_NEXT(curr_task, tasks) == NULL ? LIST_FIRST(head)                    \
-										 : LIST_NEXT(curr_task, tasks))
-
-LIST_HEAD(, task) tasks = LIST_HEAD_INITIALIZER();
+TLIST_HEAD(, task) tasks = TLIST_HEAD_INITIALIZER();
 struct task *curr_task = NULL;
 
 static void _free_task(struct task *task) {
-	LIST_REMOVE(task, tasks);
+	TLIST_REMOVE(task);
 	free(task->stack_mem_start);
 	free(task);
 }
@@ -35,7 +31,7 @@ static void _finish_task(void) {
 void _sched_replace_curr_task(void) {
 	struct task *prev_task = curr_task;
 	do {
-		curr_task = LIST_NEXT_CIRCULAR(&tasks, curr_task, tasks);
+		curr_task = TLIST_NEXT(&tasks, curr_task);
 	} while (curr_task->state != TASK_RUNNING);
 	if (prev_task->state == TASK_DONE) { _free_task(curr_task); }
 }
@@ -43,7 +39,7 @@ void _sched_replace_curr_task(void) {
 void sched_init(void) {
 	curr_task = calloc(1, sizeof(struct task));
 	curr_task->state = TASK_RUNNING;
-	LIST_INSERT_HEAD(&tasks, curr_task, tasks);
+	TLIST_INSERT_HEAD(&tasks, curr_task);
 }
 
 void sched_yield(void) {
@@ -70,5 +66,5 @@ void sched_start_task(void(function)(void *), void *arg) {
 	task->stack_top = (uint8_t *)suspended_stack;
 	task->state = TASK_RUNNING;
 
-	LIST_INSERT_HEAD(&tasks, task, tasks);
+	TLIST_INSERT_HEAD(&tasks, task);
 }
