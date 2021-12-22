@@ -9,16 +9,14 @@
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
-#define SHORT_DELAY	  10000
-#define LONG_DELAY	  2000000
+#define SHORT_DELAY	  1
+#define LONG_DELAY	  150
 #define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
 #define ORANGE_LED 13
 #define RED_LED	   14
 #define BLUE_LED   15
-
-unsigned int delay_weight = LONG_DELAY;
 
 #define MAX_FRAME_LEN 1518
 #define ETHERNOT_LEN  6
@@ -58,13 +56,18 @@ void turn_led_off(struct gpio_pin led) {
 
 void flash(void *color_idx) {
 	const struct gpio_pin gpio_pin = onboard_LEDs[(uint32_t)color_idx];
-	while (gpio_pin.pin != GREEN_LED || delay_weight > SHORT_DELAY) {
+	unsigned int delay = LONG_DELAY;
+
+	while (1) {
 		turn_led_on(gpio_pin);
-		// TODO: use usleep
-		sleep(delay_weight);
-		// TODO: use usleep
+		usleep(delay);
 		turn_led_off(gpio_pin);
-		sleep(delay_weight);
+		usleep(delay);
+		if (delay > SHORT_DELAY) {
+			delay *= DELAY_PORTION;
+		} else if (gpio_pin.pin == GREEN_LED) {
+			break;
+		}
 	}
 }
 
@@ -134,6 +137,5 @@ int main() {
 
 	while (1) {
 		sched_yield();
-		if (delay_weight > SHORT_DELAY) { delay_weight *= DELAY_PORTION; }
 	}
 }

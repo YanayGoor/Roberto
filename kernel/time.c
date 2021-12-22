@@ -72,12 +72,13 @@ void time_init(void) {
 }
 
 rtime_t get_time(void) {
-	return now.seconds * MS_PER_SEC + now.ticks * MS_PER_SEC / TICKS_PER_SEC;
+	return now.seconds * MS_PER_SEC +
+		   now.ticks * (double)MS_PER_SEC / (double)TICKS_PER_SEC;
 }
 
-void sleep(unsigned int seconds) {
+void usleep(unsigned int milliseconds) {
 	struct sleeping_task *task = malloc(sizeof(struct sleeping_task));
-	task->wakeup_at = get_time() + seconds * MS_PER_SEC;
+	task->wakeup_at = get_time() + milliseconds;
 	task->future = FUTURE_INITIALIZER(&task->future);
 	insert_to_sleeping_tasks(task);
 
@@ -85,4 +86,8 @@ void sleep(unsigned int seconds) {
 
 	STLIST_REMOVE(task);
 	free(task);
+}
+
+void sleep(unsigned int seconds) {
+	usleep(seconds * MS_PER_SEC);
 }

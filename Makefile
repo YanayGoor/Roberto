@@ -36,3 +36,9 @@ debug: flash
 	st-util -p ${DEBUG_PORT} &
 	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
 
+debug-client:
+	gdb-multiarch -ex "target remote localhost:${DEBUG_PORT}" -ex "symbol-file ${BUILD_DIR}/${PROJECT}"
+
+debug-server:
+	st-util -p ${DEBUG_PORT}
+
