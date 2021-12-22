@@ -2,14 +2,15 @@
 #include <io/gpio.h>
 #include <io/spi.h>
 #include <kernel/sched.h>
+#include <kernel/time.h>
 #include <malloc.h>
 #include <memory.h>
 #include <stdbool.h>
 
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
-#define SHORT_DELAY	  1000
-#define LONG_DELAY	  200000
+#define SHORT_DELAY	  10000
+#define LONG_DELAY	  2000000
 #define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
@@ -59,9 +60,11 @@ void flash(void *color_idx) {
 	const struct gpio_pin gpio_pin = onboard_LEDs[(uint32_t)color_idx];
 	while (gpio_pin.pin != GREEN_LED || delay_weight > SHORT_DELAY) {
 		turn_led_on(gpio_pin);
-		delay(delay_weight);
+		// TODO: use usleep
+		sleep(delay_weight);
+		// TODO: use usleep
 		turn_led_off(gpio_pin);
-		sched_yield();
+		sleep(delay_weight);
 	}
 }
 
@@ -121,6 +124,7 @@ int main() {
 	enc28j60_init(enc, &spi_module_1, &enc8j60_spi_slave, true, MAX_FRAME_LEN,
 				  1, 1);
 	sched_init();
+	time_init();
 
 	// sched_start_task(flash, (void *)0);
 	// sched_start_task(flash, (void *)1);

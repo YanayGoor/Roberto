@@ -38,4 +38,6 @@ struct suspended_task_stack {
 	uint32_t xpsr;
 };
 
+struct task *curr_task;
+
 #endif // SCHED_INTERNAL_H

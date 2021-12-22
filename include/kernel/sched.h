@@ -4,12 +4,13 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-enum task_state { TASK_RUNNING, TASK_DONE };
+enum task_state { TASK_RUNNING, TASK_DONE, TASK_WAITING };
 
 struct task {
 	uint8_t *stack_top;
 	uint8_t *stack_mem_start;
 	LIST_ENTRY(task) tasks;
+	TAILQ_ENTRY(task) wait_queue;
 	enum task_state state;
 };
 

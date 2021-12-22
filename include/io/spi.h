@@ -1,6 +1,7 @@
 #ifndef SPI_H
 #define SPI_H
 
+#include "buses.h"
 #include "gpio.h"
 
 #include <stdbool.h>
@@ -24,8 +25,6 @@ enum alt_fn {
 	AF14,
 	AF15
 };
-
-enum peripheral_bus { APB1, APB2 };
 
 struct spi_module {
 	SPI_TypeDef *regs;
