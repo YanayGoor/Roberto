@@ -1,6 +1,7 @@
 #include <stm32f4/stm32f4xx.h>
 
 #include <kernel/future.h>
+#include <kernel/sched.h>
 #include <kernel/time.h>
 #include <sys/queue.h>
 
@@ -53,22 +54,25 @@ static void insert_to_sleeping_tasks(struct sleeping_task *elm) {
 }
 
 static void wakeup_sleeping_tasks() {
-	rtime_t time = get_time();
-	struct sleeping_task *entry;
-	STLIST_FOREACH(entry, &sleeping_tasks) {
-		if (entry->wakeup_at > time) { break; }
-		wake_up(&entry->future);
+	while (1) {
+		rtime_t time = get_time();
+		struct sleeping_task *entry;
+		STLIST_FOREACH(entry, &sleeping_tasks) {
+			if (entry->wakeup_at > time) { break; }
+			wake_up(&entry->future);
+		}
+		sched_yield();
 	}
 }
 
 void SysTick_Handler(void) {
 	now.ticks = (now.ticks + 1) % TICKS_PER_SEC;
 	now.seconds += (now.ticks == 0);
-	wakeup_sleeping_tasks();
 }
 
 void time_init(void) {
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC);
+	sched_start_task(wakeup_sleeping_tasks, NULL);
 }
 
 rtime_t get_time(void) {
