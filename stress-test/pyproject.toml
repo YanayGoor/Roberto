@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "roberto-stress-test"
+version = "0.1.0"
+description = ""
+authors = ["Yanay Goor <yanay.goor@gmail.com>"]
+packages = [
+    { include = "stress_test" },
+]
+
+[tool.poetry.scripts]
+test_master = 'stress_test.main:run_master'
+test_slave = 'stress_test.main:run_slave'
+
+[tool.poetry.dependencies]
+python = "3.10.1"
+click = "^8.0.3"
+scapy = "^2.4.5"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+black = "^21.12b0"
+mypy = "^0.930"
+flake8-black = "^0.2.3"
+flake8-bugbear = "^21.11.29"
+flake8-builtins = "^1.5.3"
+flake8-expression-complexity = "^0.0.9"
+isort = "^5.10.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
