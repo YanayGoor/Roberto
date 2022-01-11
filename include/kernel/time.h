@@ -8,6 +8,6 @@ typedef uint64_t rtime_t;
 void time_init(void);
 rtime_t get_time(void);
 void sleep(unsigned int seconds);
-void usleep(unsigned int milliseconds);
+void msleep(unsigned int milliseconds);
 
 #endif // ROBERTO_TIME_H

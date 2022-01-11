@@ -80,7 +80,7 @@ rtime_t get_time(void) {
 		   now.ticks * (double)MS_PER_SEC / (double)TICKS_PER_SEC;
 }
 
-void usleep(unsigned int milliseconds) {
+void msleep(unsigned int milliseconds) {
 	struct sleeping_task *task = malloc(sizeof(struct sleeping_task));
 	task->wakeup_at = get_time() + milliseconds;
 	task->future = FUTURE_INITIALIZER(&task->future);
@@ -93,5 +93,5 @@ void usleep(unsigned int milliseconds) {
 }
 
 void sleep(unsigned int seconds) {
-	usleep(seconds * MS_PER_SEC);
+	msleep(seconds * MS_PER_SEC);
 }

@@ -78,9 +78,9 @@ void flash(void *color_idx) {
 
 	while (1) {
 		turn_led_on(gpio_pin);
-		usleep(delay);
+		msleep(delay);
 		turn_led_off(gpio_pin);
-		usleep(delay);
+		msleep(delay);
 		if (delay > SHORT_DELAY) {
 			delay *= DELAY_PORTION;
 		} else if (gpio_pin.pin == GREEN_LED) {
