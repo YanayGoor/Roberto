@@ -2,6 +2,7 @@
 
 #include <io/enc28j60.h>
 #include <io/spi.h>
+#include <kernel/time.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -168,7 +169,7 @@ uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller *enc,
 									uint8_t addr) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 1);
-	WAIT_10_US()
+	msleep(1);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 0);
 	return enc28j60_read_ctrl_reg(enc, MIRD_REG);
@@ -178,6 +179,6 @@ void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller *enc, uint8_t addr,
 								 uint16_t value) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MIWR_REG, value);
-	WAIT_10_US()
+	msleep(1);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 }

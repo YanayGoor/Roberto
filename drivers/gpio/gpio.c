@@ -33,10 +33,11 @@ void gpio_init_pin(const struct gpio_port *port, struct gpio_pin pin) {
 	set_pins_mode(
 		port, SET_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN),
 		CLEAR_MASK(pin.mode, MODE_MASK) << (pin.pin * GPIO_MODE_BITLEN));
-	set_pins_alt_fn(
-		port,
-		(uint64_t)SET_MASK(pin.alt_fn, ALT_FN_MASK) << (pin.pin * GPIO_ALT_FN_BITLEN),
-		(uint64_t)CLEAR_MASK(pin.alt_fn, ALT_FN_MASK) << (pin.pin * GPIO_ALT_FN_BITLEN));
+	set_pins_alt_fn(port,
+					(uint64_t)SET_MASK(pin.alt_fn, ALT_FN_MASK)
+						<< (pin.pin * GPIO_ALT_FN_BITLEN),
+					(uint64_t)CLEAR_MASK(pin.alt_fn, ALT_FN_MASK)
+						<< (pin.pin * GPIO_ALT_FN_BITLEN));
 }
 
 void gpio_init_bulk(const struct gpio_port *port, uint16_t pins,

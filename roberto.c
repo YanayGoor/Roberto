@@ -10,7 +10,7 @@
 #define SIZEOF_ARR(x) (sizeof(x) / sizeof(*(x)))
 
 #define SHORT_DELAY	  1
-#define LONG_DELAY	  150
+#define LONG_DELAY	  10
 #define DELAY_PORTION 0.99
 
 #define GREEN_LED  12
@@ -19,7 +19,6 @@
 #define BLUE_LED   15
 
 #define MAX_FRAME_LEN 1518
-#define ETHERNOT_LEN  6
 
 const struct gpio_pin onboard_LEDs[] = {
 	{.pin = GREEN_LED, .mode = GPIO_OUTPUT},
@@ -44,9 +43,9 @@ const struct spi_slave enc8j60_2_spi_slave = {
 	.ss_pin = 6,
 };
 
- const struct spi_module *enc28j60_1_spi_module = &spi_module_2;
+const struct spi_module *enc28j60_1_spi_module = &spi_module_2;
 
- const struct spi_params enc28j60_1_spi_params = {.sclk_port = &gpio_pb,
+const struct spi_params enc28j60_1_spi_params = {.sclk_port = &gpio_pb,
 												 .sclk_pin = 13,
 												 .miso_port = &gpio_pb,
 												 .miso_pin = 14,
@@ -55,14 +54,10 @@ const struct spi_slave enc8j60_2_spi_slave = {
 												 .is_master = true,
 												 .baud_rate = 5};
 
- const struct spi_slave enc8j60_1_spi_slave = {
+const struct spi_slave enc8j60_1_spi_slave = {
 	.ss_port = &gpio_pb,
 	.ss_pin = 11,
 };
-
-void delay(int weight) {
-	for (int i = 0; i < weight; i++) {}
-}
 
 void turn_led_on(struct gpio_pin led) {
 	gpio_write_partial(&gpio_pd, -1, 1 << led.pin);
@@ -89,8 +84,8 @@ void flash(void *color_idx) {
 	}
 }
 
-struct enc28j60_controller enc1 = { 0 };
-struct enc28j60_controller enc2 = { 0 };
+struct enc28j60_controller enc1 = {0};
+struct enc28j60_controller enc2 = {0};
 
 void enc_poll(void *enc_arg) {
 	int bytes_read;
@@ -124,42 +119,45 @@ void enc_poll(void *enc_arg) {
 
 		struct enc28j60_controller *other_enc = enc == &enc1 ? &enc2 : &enc1;
 		if (!enc28j60_get_tx_busy(other_enc)) {
-			enc28j60_transmit_packet(other_enc, (uint8_t *)buff, hdr->byte_count,
-									 ENC28J60_PCRCEN);
+			enc28j60_transmit_packet(other_enc, (uint8_t *)buff,
+									 hdr->byte_count, ENC28J60_PCRCEN);
 		}
 	}
+}
+
+void init() {
+	// TODO: separate init to struct and hardware or automatically reset
+	enc28j60_init(&enc1, enc28j60_1_spi_module, &enc8j60_1_spi_slave, true,
+				  MAX_FRAME_LEN, 1, 1);
+	enc28j60_reset(&enc1);
+	msleep(LONG_DELAY);
+	enc28j60_init(&enc1, enc28j60_1_spi_module, &enc8j60_1_spi_slave, true,
+				  MAX_FRAME_LEN, 1, 1);
+
+	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
+				  MAX_FRAME_LEN, 1, 1);
+	enc28j60_reset(&enc2);
+	msleep(LONG_DELAY);
+	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
+				  MAX_FRAME_LEN, 1, 1);
+
+	//	 sched_start_task(flash, (void *)0);
+	//	 sched_start_task(flash, (void *)1);
+	//	 sched_start_task(flash, (void *)2);
+	//	 sched_start_task(flash, (void *)3);
+	sched_start_task(enc_poll, &enc1);
+	sched_start_task(enc_poll, &enc2);
 }
 
 int main() {
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 	spi_init(enc28j60_1_spi_module, enc28j60_1_spi_params);
-
-	// TODO: separate init to struct and hardware or automatically reset
-	enc28j60_init(&enc1, enc28j60_1_spi_module, &enc8j60_1_spi_slave, true,
-				  MAX_FRAME_LEN, 1, 1);
-	enc28j60_reset(&enc1);
-	delay(LONG_DELAY);
-	enc28j60_init(&enc1, enc28j60_1_spi_module, &enc8j60_1_spi_slave, true,
-				  MAX_FRAME_LEN, 1, 1);
-
-
-		spi_init(enc28j60_2_spi_module, enc28j60_2_spi_params);
-		enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
-					  MAX_FRAME_LEN, 1, 1);
-		enc28j60_reset(&enc2);
-		delay(LONG_DELAY);
-		enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
-					  MAX_FRAME_LEN, 1, 1);
+	spi_init(enc28j60_2_spi_module, enc28j60_2_spi_params);
 
 	sched_init();
 	time_init();
 
-	// sched_start_task(flash, (void *)0);
-	// sched_start_task(flash, (void *)1);
-	// sched_start_task(flash, (void *)2);
-	// sched_start_task(flash, (void *)3);
-	sched_start_task(enc_poll, &enc1);
-	sched_start_task(enc_poll, &enc2);
+	sched_start_task(init, NULL);
 
 	while (1) {
 		sched_yield();
