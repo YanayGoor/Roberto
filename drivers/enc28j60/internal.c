@@ -14,21 +14,16 @@
 
 #define TO_HIGH_BYTE(hword) (hword << 8)
 
-#define WAIT_210_NS()                                                          \
-	for (int i = 0; i < 105; i++) {}
-#define WAIT_10_US()                                                           \
-	for (int i = 0; i < 1005; i++) {}
-
 static void _write_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 		spi_write(enc->module, WCR_OPCODE(address));
 		spi_wait_write_ready(enc->module);
 		spi_write(enc->module, value);
 		spi_wait_not_busy(enc->module);
 		spi_read(enc->module);
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 	})
 }
 
@@ -36,7 +31,7 @@ static uint8_t _read_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							  bool dummy_byte) {
 	uint8_t result;
 	SPI_SELECT_SLAVE(enc->slave, {
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 		spi_write(enc->module, RCR_OPCODE(address));
 		spi_wait_write_ready(enc->module);
 		spi_write(enc->module, 0);
@@ -50,7 +45,7 @@ static uint8_t _read_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 		}
 		spi_wait_read_ready(enc->module);
 		result = spi_read(enc->module);
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 	})
 	return result;
 }
@@ -63,7 +58,7 @@ static void _set_bits_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 		spi_write(enc->module, value);
 		spi_wait_not_busy(enc->module);
 		spi_read(enc->module);
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 	})
 }
 
@@ -75,7 +70,7 @@ static void _clear_bits_ctrl_reg(struct enc28j60_controller *enc,
 		spi_write(enc->module, value);
 		spi_wait_not_busy(enc->module);
 		spi_read(enc->module);
-		WAIT_210_NS(); // Tcsh
+		nsleep(210); // Tcsh
 	})
 }
 
@@ -169,7 +164,7 @@ uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller *enc,
 									uint8_t addr) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 1);
-	msleep(1);
+	nsleep(10000);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 0);
 	return enc28j60_read_ctrl_reg(enc, MIRD_REG);
@@ -179,6 +174,6 @@ void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller *enc, uint8_t addr,
 								 uint16_t value) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MIWR_REG, value);
-	msleep(1);
+	nsleep(10000);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 }

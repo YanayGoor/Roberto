@@ -52,7 +52,7 @@ const struct spi_params enc28j60_1_spi_params = {.sclk_port = &gpio_pb,
 												 .mosi_port = &gpio_pb,
 												 .mosi_pin = 15,
 												 .is_master = true,
-												 .baud_rate = 5};
+												 .baud_rate = 4};
 
 const struct spi_slave enc8j60_1_spi_slave = {
 	.ss_port = &gpio_pb,

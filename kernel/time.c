@@ -10,6 +10,10 @@
 #endif // TICKS_PER_SEC
 
 #define MS_PER_SEC 1000
+#define NS_PER_SEC 1000000000
+
+#define TICKS_TO_NS(ticks) ((uint64_t)ticks * MS_PER_SEC / TICKS_PER_SEC)
+#define NS_TO_TICKS(ns)	   ((uint64_t)ns * TICKS_PER_SEC / NS_PER_SEC)
 
 #define STLIST_ENTRY(type)				  LIST_ENTRY(type)
 #define STLIST_HEAD(name, type)			  LIST_HEAD(name, type)
@@ -28,10 +32,7 @@ struct sleeping_task {
 	STLIST_ENTRY(sleeping_task) entry;
 };
 
-struct {
-	uint32_t seconds;
-	uint32_t ticks;
-} now = {0, 0};
+uint64_t ticks = 0;
 
 STLIST_HEAD(, sleeping_task) sleeping_tasks = STLIST_HEAD_INITIALIZER();
 
@@ -66,8 +67,7 @@ static void wakeup_sleeping_tasks() {
 }
 
 void SysTick_Handler(void) {
-	now.ticks = (now.ticks + 1) % TICKS_PER_SEC;
-	now.seconds += (now.ticks == 0);
+	ticks++;
 }
 
 void time_init(void) {
@@ -76,8 +76,14 @@ void time_init(void) {
 }
 
 rtime_t get_time(void) {
-	return now.seconds * MS_PER_SEC +
-		   now.ticks * (double)MS_PER_SEC / (double)TICKS_PER_SEC;
+	return TICKS_TO_NS(ticks);
+}
+
+void nsleep(unsigned int nanoseconds) {
+	uint64_t target = ticks + NS_TO_TICKS(nanoseconds);
+	while (ticks < target) {
+		__NOP();
+	}
 }
 
 void msleep(unsigned int milliseconds) {
