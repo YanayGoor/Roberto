@@ -33,7 +33,7 @@ void _sched_replace_curr_task(void) {
 	do {
 		curr_task = TLIST_NEXT(&tasks, curr_task);
 	} while (curr_task->state != TASK_RUNNING);
-	if (prev_task->state == TASK_DONE) { _free_task(curr_task); }
+	if (prev_task->state == TASK_DONE) { _free_task(prev_task); }
 }
 
 void sched_init(void) {
