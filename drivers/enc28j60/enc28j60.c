@@ -1,6 +1,10 @@
 #include "internal.h"
 
+#include <io/dma.h>
 #include <io/enc28j60.h>
+#include <kernel/time.h>
+#include <malloc.h>
+#include <memory.h>
 
 #define WAIT_10_NS()                                                           \
 	for (int i = 0; i < 10; i++) {}
@@ -106,29 +110,69 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 	return header->byte_count;
 }
 
+bool done = 0;
+
 void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 							  const uint8_t *buffer, size_t size,
 							  uint8_t flags) {
 	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
 	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
 
+	unsigned char *new_buff = malloc(size + 2);
+	memcpy(new_buff + 2, buffer, size);
+	new_buff[0] = WBM_OPCODE();
+	new_buff[1] = ENC28J60_POVERRIDE | flags;
+
+	const struct dma_transfer_stream transfer = {
+		.stream = 4,
+		.buffer = new_buff,
+		.size = size + 2,
+		.psize = DMA_BYTE,
+		.msize = DMA_BYTE,
+		.direction = DMA_MEM_TO_PERIPHERAL,
+		.minc = true,
+		.pinc = false,
+		.peripheral_reg = (void *)&enc->module->regs->DR,
+		.channel = 0,
+	};
+	dma_setup_transfer(&dma_controller_1, &transfer);
+
 	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_write(enc);
+		nsleep(50); // Tcsh
+		NVIC_EnableIRQ(DMA1_Stream4_IRQn);
+		done = false;
+		dma_enable_transfer(&dma_controller_1, &transfer);
+		enc->module->regs->CR2 |= SPI_CR2_TXDMAEN;
+//		while (!(enc->module->regs->CR2 & SPI_CR2_TXDMAEN)) {}
+//		while (!(dma_controller_1.regs->HISR & DMA_HISR_TCIF4)) {
+//			__NOP();
+//		}
+		while (!done) {}
+		spi_wait_write_ready(enc->module);
+		spi_read(enc->module);
+		spi_wait_read_ready(enc->module);
+		spi_read(enc->module);
 
-		if (flags) {
-			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
-		} else {
-			enc28j60_buff_write_byte(enc, 0);
-		}
-		enc28j60_buff_write(enc, buffer, size);
-
-		enc28j60_finish_buff_write(enc);
+		enc->module->regs->CR2 &= ~SPI_CR2_TXDMAEN;
+		dma_controller_1.regs->HIFCR |= DMA_HIFCR_CTCIF4 | DMA_HIFCR_CDMEIF4;
+		free(new_buff);
+//		while (dma_controller_1.regs->HISR & DMA_HISR_TCIF4) {
+//			__NOP();
+//		}
+//		int read = enc->module->regs->DR;
+		nsleep(210); // Tcsh
 	})
 
 	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
 
 	enc->pkt_tx_status_addr = size + 1;
+}
+
+void DMA1_Stream4_IRQHandler(void) {
+//	DMA2->HIFCR = -1;
+	DMA1_Stream4->CR &= ~DMA_SxCR_TCIE;
+	done = true;
 }
 
 void enc28j60_last_transmitted_pkt_status(

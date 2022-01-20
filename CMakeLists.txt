@@ -12,6 +12,7 @@ add_executable(Roberto
     drivers/enc28j60/internal.c
     drivers/enc28j60/enc28j60.c
     drivers/gpio/gpio.c
+    drivers/dma/dma.c
     kernel/sched/context_switch.s
     kernel/sched/sched.c
     kernel/sched/future.c

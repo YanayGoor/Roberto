@@ -28,9 +28,9 @@ enum alt_fn {
 
 struct spi_module {
 	SPI_TypeDef *regs;
-	uint32_t apb1_enr;
-	uint32_t apb2_enr;
-	uint8_t alt_fn;
+	const uint32_t apb1_enr;
+	const uint32_t apb2_enr;
+	const uint8_t alt_fn;
 };
 
 struct spi_params {
