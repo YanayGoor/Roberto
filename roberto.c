@@ -1,3 +1,4 @@
+#include <io/dma.h>
 #include <io/enc28j60.h>
 #include <io/gpio.h>
 #include <io/spi.h>
@@ -87,7 +88,7 @@ void flash(void *color_idx) {
 struct enc28j60_controller enc1 = {0};
 struct enc28j60_controller enc2 = {0};
 
-#define ETHERNOT_LEN  6
+#define ETHERNOT_LEN 6
 const uint8_t src_mac[ETHERNOT_LEN] = {1, 3, 3, 7, 9, 9};
 
 void enc_poll(void *enc_arg) {
@@ -163,6 +164,7 @@ int main() {
 	//	spi_init(enc28j60_2_spi_module, enc28j60_2_spi_params);
 
 	sched_init();
+	dma_init();
 	time_init();
 
 	sched_start_task(init, NULL);

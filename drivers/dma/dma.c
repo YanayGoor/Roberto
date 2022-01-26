@@ -1,15 +1,44 @@
 #include <stm32f4/stm32f4xx.h>
 
 #include <io/dma.h>
+#include <kernel/future.h>
+#include <kernel/sched.h>
+#include <sys/queue.h>
+
+#define GET_STREAM_QUEUE(ctrl, stream)                                         \
+	(&transfers[((ctrl)->num - 1) * 8 + stream])
+
+enum transfer_status { transfer_pending, transfer_in_progress, transfer_done };
+
+struct dma_transfer {
+	const struct dma_stream *stream;
+	enum transfer_status status;
+	struct future future;
+	LIST_ENTRY(dma_transfer) entry;
+};
+
+LIST_HEAD(transfers_head, dma_transfer) transfers[8 * 2];
 
 void dma_enable_controller(const struct dma_controller *ctrl) {
 	RCC->AHB1ENR |= ctrl->enr;
 }
 
-void dma_setup_transfer(const struct dma_controller *ctrl,
-						const struct dma_transfer_stream *transfer) {
-	dma_enable_controller(ctrl);
-	DMA_Stream_TypeDef *stream = ctrl->streams[transfer->stream];
+void list_insert_tail(struct transfers_head *head, struct dma_transfer *item) {
+	// TODO: Create a tail queue struct for O(1) access.
+	if (LIST_EMPTY(head)) {
+		LIST_INSERT_HEAD(head, item, entry);
+		return;
+	}
+	struct dma_transfer *last = LIST_FIRST(head);
+	while (LIST_NEXT(last, entry) != NULL) {
+		last = LIST_NEXT(last, entry);
+	}
+	LIST_INSERT_AFTER(last, item, entry);
+}
+
+void dma_setup_stream_transfer(const struct dma_stream *transfer) {
+	dma_enable_controller(transfer->ctrl);
+	DMA_Stream_TypeDef *stream = transfer->ctrl->streams[transfer->stream];
 	stream->CR &= ~DMA_SxCR_EN;
 	while (stream->CR & DMA_SxCR_EN) {}
 	stream->CR |= (transfer->channel & 1) ? DMA_SxCR_CHSEL_0 : 0;
@@ -30,13 +59,53 @@ void dma_setup_transfer(const struct dma_controller *ctrl,
 	stream->FCR = 0;
 }
 
-void dma_enable_transfer(const struct dma_controller *ctrl,
-						 const struct dma_transfer_stream *transfer) {
-	dma_enable_controller(ctrl);
-	ctrl->streams[transfer->stream]->CR |= DMA_SxCR_EN;
+void dma_enable_transfer(const struct dma_stream *transfer) {
+	dma_enable_controller(transfer->ctrl);
+	dma_setup_stream_transfer(transfer);
+	transfer->ctrl->streams[transfer->stream]->CR |= DMA_SxCR_EN;
+}
+
+void dma_setup_transfer(const struct dma_stream *stream) {
+	struct dma_transfer *transfer = malloc(sizeof(struct dma_transfer));
+	transfer->stream = stream;
+	transfer->status = transfer_pending;
+	transfer->future = FUTURE_INITIALIZER(&transfer->future);
+	list_insert_tail(GET_STREAM_QUEUE(stream->ctrl, stream->stream), transfer);
+	await(&transfer->future);
+}
+
+void __attribute__((noreturn)) dma_background_worker() {
+	while (1) {
+		sched_yield();
+		for (int i = 0; i < 8 * 2; i++) {
+			struct dma_transfer *transfer = LIST_FIRST(&transfers[i]);
+			if (transfer == NULL) { continue; }
+			if (transfer->status == transfer_pending) {
+				transfer->status = transfer_in_progress;
+				dma_enable_transfer(transfer->stream);
+			}
+			if (transfer->status == transfer_done) {
+				LIST_REMOVE(transfer, entry);
+				wake_up(&transfer->future);
+				free(transfer);
+			}
+		}
+	}
+}
+
+void dma_init(void) {
+	sched_start_task(dma_background_worker, NULL);
 }
 
 // clang-format off
+#define DMA_DEFINE_IRQ_HANDLER(ctrl_index, index)					\
+	void DMA##ctrl_index##_Stream##index##_IRQHandler(void) {		\
+		DMA##ctrl_index##_Stream##index->CR &= ~DMA_SxCR_TCIE;  	\
+		LIST_FIRST(                                                	\
+			GET_STREAM_QUEUE(&dma_controller_##ctrl_index, index)   \
+		)->status = transfer_done;									\
+	}
+
 #define DMA_DEFINE_CONTROLLER(index)                          \
 	const struct dma_controller dma_controller_##index = {	  \
 		.enr = RCC_AHB1ENR_DMA##index##EN,                    \
@@ -50,9 +119,27 @@ void dma_enable_transfer(const struct dma_controller *ctrl,
 			DMA##index##_Stream5,                             \
 			DMA##index##_Stream6,                             \
 			DMA##index##_Stream7                              \
-		}                                         			  \
+		},                                                    \
+		.num = index                                          \
 	}
 // clang-format on
 
 DMA_DEFINE_CONTROLLER(1);
 DMA_DEFINE_CONTROLLER(2);
+
+DMA_DEFINE_IRQ_HANDLER(1, 0);
+DMA_DEFINE_IRQ_HANDLER(1, 1);
+DMA_DEFINE_IRQ_HANDLER(1, 2);
+DMA_DEFINE_IRQ_HANDLER(1, 3);
+DMA_DEFINE_IRQ_HANDLER(1, 4);
+DMA_DEFINE_IRQ_HANDLER(1, 5);
+DMA_DEFINE_IRQ_HANDLER(1, 6);
+DMA_DEFINE_IRQ_HANDLER(1, 7);
+DMA_DEFINE_IRQ_HANDLER(2, 0);
+DMA_DEFINE_IRQ_HANDLER(2, 1);
+DMA_DEFINE_IRQ_HANDLER(2, 2);
+DMA_DEFINE_IRQ_HANDLER(2, 3);
+DMA_DEFINE_IRQ_HANDLER(2, 4);
+DMA_DEFINE_IRQ_HANDLER(2, 5);
+DMA_DEFINE_IRQ_HANDLER(2, 6);
+DMA_DEFINE_IRQ_HANDLER(2, 7);

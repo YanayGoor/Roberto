@@ -15,7 +15,8 @@ enum dma_direction {
 
 enum dma_data_size { DMA_BYTE = 0, DMA_HALFWORD = 1, DMA_WORD = 2 };
 
-struct dma_transfer_stream {
+struct dma_stream {
+	const struct dma_controller *ctrl;
 	const uint8_t stream;
 	const uint8_t channel : 3;
 	const enum dma_direction direction;
@@ -28,23 +29,17 @@ struct dma_transfer_stream {
 	const size_t size;
 };
 
-struct dma_transfer {
-	const struct dma_transfer_stream *streams;
-	const size_t *len;
-};
-
 struct dma_controller {
 	const uint32_t enr;
 	DMA_TypeDef *regs;
 	DMA_Stream_TypeDef *streams[8];
+	unsigned int num;
 };
 
 const struct dma_controller dma_controller_1;
 const struct dma_controller dma_controller_2;
 
-void dma_setup_transfer(const struct dma_controller *ctrl,
-						const struct dma_transfer_stream *transfer);
-void dma_enable_transfer(const struct dma_controller *ctrl,
-						 const struct dma_transfer_stream *transfer);
+void dma_init(void);
+void dma_setup_transfer(const struct dma_stream *stream);
 
 #endif // ROBERTO_DMA_H
