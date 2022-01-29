@@ -41,6 +41,7 @@ void dma_setup_stream_transfer(const struct dma_stream *transfer) {
 	DMA_Stream_TypeDef *stream = transfer->ctrl->streams[transfer->stream];
 	stream->CR &= ~DMA_SxCR_EN;
 	while (stream->CR & DMA_SxCR_EN) {}
+	stream->CR = 0;
 	stream->CR |= (transfer->channel & 1) ? DMA_SxCR_CHSEL_0 : 0;
 	stream->CR |= (transfer->channel & 2) ? DMA_SxCR_CHSEL_1 : 0;
 	stream->CR |= (transfer->channel & 4) ? DMA_SxCR_CHSEL_2 : 0;
@@ -95,12 +96,29 @@ void __attribute__((noreturn)) dma_background_worker() {
 
 void dma_init(void) {
 	sched_start_task(dma_background_worker, NULL);
+	NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream2_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream4_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+	NVIC_EnableIRQ(DMA1_Stream7_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream5_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+	NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 }
+//		DMA##ctrl_index##_Stream##index->CR &= ~DMA_SxCR_TCIE;  	\
 
 // clang-format off
-#define DMA_DEFINE_IRQ_HANDLER(ctrl_index, index)					\
-	void DMA##ctrl_index##_Stream##index##_IRQHandler(void) {		\
-		DMA##ctrl_index##_Stream##index->CR &= ~DMA_SxCR_TCIE;  	\
+#define DMA_DEFINE_IRQ_HANDLER(ctrl_index, index, high)					\
+	void DMA##ctrl_index##_Stream##index##_IRQHandler(void) {  \
+		dma_controller_##ctrl_index.regs->high##IFCR |= DMA_##high##IFCR_CTCIF##index | DMA_##high##IFCR_CDMEIF##index | DMA_##high##IFCR_CTEIF##index;  	\
 		LIST_FIRST(                                                	\
 			GET_STREAM_QUEUE(&dma_controller_##ctrl_index, index)   \
 		)->status = transfer_done;									\
@@ -127,19 +145,19 @@ void dma_init(void) {
 DMA_DEFINE_CONTROLLER(1);
 DMA_DEFINE_CONTROLLER(2);
 
-DMA_DEFINE_IRQ_HANDLER(1, 0);
-DMA_DEFINE_IRQ_HANDLER(1, 1);
-DMA_DEFINE_IRQ_HANDLER(1, 2);
-DMA_DEFINE_IRQ_HANDLER(1, 3);
-DMA_DEFINE_IRQ_HANDLER(1, 4);
-DMA_DEFINE_IRQ_HANDLER(1, 5);
-DMA_DEFINE_IRQ_HANDLER(1, 6);
-DMA_DEFINE_IRQ_HANDLER(1, 7);
-DMA_DEFINE_IRQ_HANDLER(2, 0);
-DMA_DEFINE_IRQ_HANDLER(2, 1);
-DMA_DEFINE_IRQ_HANDLER(2, 2);
-DMA_DEFINE_IRQ_HANDLER(2, 3);
-DMA_DEFINE_IRQ_HANDLER(2, 4);
-DMA_DEFINE_IRQ_HANDLER(2, 5);
-DMA_DEFINE_IRQ_HANDLER(2, 6);
-DMA_DEFINE_IRQ_HANDLER(2, 7);
+DMA_DEFINE_IRQ_HANDLER(1, 0, L);
+DMA_DEFINE_IRQ_HANDLER(1, 1, L);
+DMA_DEFINE_IRQ_HANDLER(1, 2, L);
+DMA_DEFINE_IRQ_HANDLER(1, 3, L);
+DMA_DEFINE_IRQ_HANDLER(1, 4, H);
+DMA_DEFINE_IRQ_HANDLER(1, 5, H);
+DMA_DEFINE_IRQ_HANDLER(1, 6, H);
+DMA_DEFINE_IRQ_HANDLER(1, 7, H);
+DMA_DEFINE_IRQ_HANDLER(2, 0, L);
+DMA_DEFINE_IRQ_HANDLER(2, 1, L);
+DMA_DEFINE_IRQ_HANDLER(2, 2, L);
+DMA_DEFINE_IRQ_HANDLER(2, 3, L);
+DMA_DEFINE_IRQ_HANDLER(2, 4, H);
+DMA_DEFINE_IRQ_HANDLER(2, 5, H);
+DMA_DEFINE_IRQ_HANDLER(2, 6, H);
+DMA_DEFINE_IRQ_HANDLER(2, 7, H);

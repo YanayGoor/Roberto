@@ -9,6 +9,7 @@ add_executable(Roberto
     stm32f4/startup_stm32f4xx.s
     stm32f4/system_stm32f4xx.c
     drivers/spi/spi.c
+    drivers/spi/spi_dma.c
     drivers/enc28j60/internal.c
     drivers/enc28j60/enc28j60.c
     drivers/gpio/gpio.c
