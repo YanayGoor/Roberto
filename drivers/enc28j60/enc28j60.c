@@ -1,6 +1,11 @@
 #include "internal.h"
 
+#include <io/dma.h>
+#include <io/spi_dma.h>
 #include <io/enc28j60.h>
+#include <kernel/time.h>
+#include <malloc.h>
+#include <memory.h>
 
 #define WAIT_10_NS()                                                           \
 	for (int i = 0; i < 10; i++) {}
@@ -112,18 +117,18 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
 	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
 
+	unsigned char *new_buff = malloc(size + 2);
+	memcpy(new_buff + 2, buffer, size);
+	new_buff[0] = WBM_OPCODE();
+	new_buff[1] = ENC28J60_POVERRIDE | flags;
+
 	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_write(enc);
-
-		if (flags) {
-			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
-		} else {
-			enc28j60_buff_write_byte(enc, 0);
-		}
-		enc28j60_buff_write(enc, buffer, size);
-
-		enc28j60_finish_buff_write(enc);
+		nsleep(50); // Tcsh
+		spi_dma_write(enc->module, new_buff, size + 2);
+		nsleep(210); // Tcsh
 	})
+
+	free(new_buff);
 
 	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);

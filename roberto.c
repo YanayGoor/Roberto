@@ -1,3 +1,4 @@
+#include <io/dma.h>
 #include <io/enc28j60.h>
 #include <io/gpio.h>
 #include <io/spi.h>
@@ -87,6 +88,9 @@ void flash(void *color_idx) {
 struct enc28j60_controller enc1 = {0};
 struct enc28j60_controller enc2 = {0};
 
+#define ETHERNOT_LEN 6
+const uint8_t src_mac[ETHERNOT_LEN] = {1, 3, 3, 7, 9, 9};
+
 void enc_poll(void *enc_arg) {
 	int bytes_read;
 	unsigned int packets_read = 0;
@@ -102,6 +106,7 @@ void enc_poll(void *enc_arg) {
 		if (rx_err) { turn_led_on(onboard_LEDs[2]); }
 		if (!packets_received) {
 			turn_led_on(onboard_LEDs[0]);
+			turn_led_off(onboard_LEDs[2]);
 			continue;
 		}
 		turn_led_off(onboard_LEDs[0]);
@@ -117,8 +122,12 @@ void enc_poll(void *enc_arg) {
 		turn_led_off(onboard_LEDs[2]);
 		packets_read++;
 
-		struct enc28j60_controller *other_enc = enc == &enc1 ? &enc2 : &enc1;
+		//		struct enc28j60_controller *other_enc = enc == &enc1 ? &enc2 :
+		//&enc1;
+		struct enc28j60_controller *other_enc = enc;
 		if (!enc28j60_get_tx_busy(other_enc)) {
+			memcpy(buff, buff + ETHERNOT_LEN, ETHERNOT_LEN);
+			memcpy(buff + ETHERNOT_LEN, src_mac, ETHERNOT_LEN);
 			enc28j60_transmit_packet(other_enc, (uint8_t *)buff,
 									 hdr->byte_count, ENC28J60_PCRCEN);
 		}
@@ -134,27 +143,28 @@ void init() {
 	enc28j60_init(&enc1, enc28j60_1_spi_module, &enc8j60_1_spi_slave, true,
 				  MAX_FRAME_LEN, 1, 1);
 
-	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
-				  MAX_FRAME_LEN, 1, 1);
-	enc28j60_reset(&enc2);
-	msleep(LONG_DELAY);
-	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
-				  MAX_FRAME_LEN, 1, 1);
+	//	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
+	//				  MAX_FRAME_LEN, 1, 1);
+	//	enc28j60_reset(&enc2);
+	//	msleep(LONG_DELAY);
+	//	enc28j60_init(&enc2, enc28j60_2_spi_module, &enc8j60_2_spi_slave, true,
+	//				  MAX_FRAME_LEN, 1, 1);
 
 	//	 sched_start_task(flash, (void *)0);
 	//	 sched_start_task(flash, (void *)1);
 	//	 sched_start_task(flash, (void *)2);
 	//	 sched_start_task(flash, (void *)3);
 	sched_start_task(enc_poll, &enc1);
-	sched_start_task(enc_poll, &enc2);
+	//	sched_start_task(enc_poll, &enc2);
 }
 
 int main() {
 	gpio_init(&gpio_pd, onboard_LEDs, SIZEOF_ARR(onboard_LEDs));
 	spi_init(enc28j60_1_spi_module, enc28j60_1_spi_params);
-	spi_init(enc28j60_2_spi_module, enc28j60_2_spi_params);
+	//	spi_init(enc28j60_2_spi_module, enc28j60_2_spi_params);
 
 	sched_init();
+	dma_init();
 	time_init();
 
 	sched_start_task(init, NULL);

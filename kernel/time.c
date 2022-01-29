@@ -54,7 +54,7 @@ static void insert_to_sleeping_tasks(struct sleeping_task *elm) {
 	STLIST_INSERT_AFTER(last, elm);
 }
 
-static void wakeup_sleeping_tasks() {
+static void __attribute__((noreturn)) wakeup_sleeping_tasks() {
 	while (1) {
 		rtime_t time = get_time();
 		struct sleeping_task *entry;
