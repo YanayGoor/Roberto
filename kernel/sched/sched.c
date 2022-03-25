@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <sys/queue.h>
 
-TLIST_HEAD(, task) tasks = TLIST_HEAD_INITIALIZER();
+tlist_head tasks = TLIST_HEAD_INITIALIZER();
 struct task *curr_task = NULL;
 
 static void _free_task(struct task *task) {

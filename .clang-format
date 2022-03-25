@@ -22,8 +22,11 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: MultiLine
+
+# TODO: change to false
 BinPackArguments: true
 BinPackParameters: true
+
 BraceWrapping:
   AfterCaseLabel:  false
   AfterClass:      false

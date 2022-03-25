@@ -5,8 +5,9 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#define TLIST_HEAD(name, type)		 LIST_HEAD(name, type)
-#define TLIST_ENTRY(type)			 LIST_ENTRY(type)
+typedef LIST_HEAD(, task) tlist_head;
+typedef LIST_ENTRY(task) tlist_entry;
+
 #define TLIST_HEAD_INITIALIZER(head) LIST_HEAD_INITIALIZER(head)
 #define TLIST_FIRST(head)			 LIST_FIRST(head)
 #define TLIST_INSERT_HEAD(head, elm) LIST_INSERT_HEAD(head, elm, tasks)
@@ -19,8 +20,8 @@ enum task_state { TASK_RUNNING, TASK_DONE, TASK_WAITING };
 struct task {
 	uint8_t *stack_top;
 	uint8_t *stack_mem_start;
-	TLIST_ENTRY(task) tasks;
-	WAITQ_ENTRY(task) wait_queue;
+	tlist_entry tasks;
+	waitq_entry wait_queue;
 	enum task_state state;
 };
 

@@ -1,104 +1,107 @@
-#include <stm32f4/stm32f4xx.h>
-
-#include <io/gpio.h>
+#include <io/dma.h>
 #include <io/spi.h>
+#include <kernel/future.h>
 #include <stdint.h>
 
-static void enable_module_clock(const struct spi_module *module) {
-	RCC->APB1ENR |= module->apb1_enr;
-	RCC->APB2ENR |= module->apb2_enr;
+enum spi_transfer_type { SPI_BYTE, SPI_BUFF };
+
+struct spi_transfer {
+	enum spi_transfer_type type;
+	uint8_t send;
+	uint8_t *recv;
+	uint8_t *send_buff;
+	uint32_t slen;
+	uint8_t *recv_buff;
+	uint32_t rlen;
+};
+
+void setup_send_transfer(const struct spi_module *module,
+						 struct dma_reserved_stream *send_stream,
+						 struct spi_transfer *transfer) {
+	if (transfer->type == SPI_BUFF && transfer->send_buff == NULL) { return; }
+	struct dma_transfer_config send_config = {
+		.buffer =
+			transfer->type == SPI_BYTE ? &transfer->send : transfer->send_buff,
+		.size = transfer->type == SPI_BYTE ? 1 : transfer->slen,
+		.psize = DMA_BYTE,
+		.msize = DMA_BYTE,
+		.direction = DMA_MEM_TO_PERIPHERAL,
+		.minc = true,
+		.pinc = false,
+		.peripheral_reg = (void *)&module->regs->DR,
+		// TODO: choose correct channel + ctrl
+		.channel = 0,
+	};
+	dma_setup_transfer(send_stream, &send_config);
+}
+void setup_recv_transfer(const struct spi_module *module,
+						 struct dma_reserved_stream *recv_stream,
+						 struct spi_transfer *transfer) {
+	if (transfer->type == SPI_BUFF && transfer->recv_buff == NULL) { return; }
+	struct dma_transfer_config recv_config = {
+		.buffer =
+			transfer->type == SPI_BYTE ? transfer->recv : transfer->recv_buff,
+		.size = transfer->type == SPI_BYTE ? 1 : transfer->rlen,
+		.psize = DMA_BYTE,
+		.msize = DMA_BYTE,
+		.direction = DMA_MEM_TO_PERIPHERAL,
+		.minc = true,
+		.pinc = false,
+		.peripheral_reg = (void *)&module->regs->DR,
+		// TODO: choose correct channel + ctrl
+		.channel = 0,
+	};
+	dma_setup_transfer(recv_stream, &recv_config);
 }
 
-void spi_init(const struct spi_module *module, const struct spi_params params) {
-	enable_module_clock(module);
-	module->regs->CR1 &= ~SPI_CR1_SPE;
-
-	gpio_init_pin(params.sclk_port,
-				  (struct gpio_pin){.pin = params.sclk_pin,
-									.mode = GPIO_ALTERNATE,
-									.alt_fn = module->alt_fn});
-	gpio_init_pin(params.mosi_port,
-				  (struct gpio_pin){.pin = params.mosi_pin,
-									.mode = GPIO_ALTERNATE,
-									.alt_fn = module->alt_fn});
-	gpio_init_pin(params.miso_port,
-				  (struct gpio_pin){.pin = params.miso_pin,
-									.mode = GPIO_ALTERNATE,
-									.alt_fn = module->alt_fn});
-	module->regs->CR1 |= params.crc_enable ? SPI_CR1_CRCEN : 0;
-	module->regs->CR1 |= params.lsb_first ? SPI_CR1_LSBFIRST : 0;
-	module->regs->CR1 |= params.is_long_frame ? SPI_CR1_DFF : 0;
-	module->regs->CR1 |= params.is_master ? SPI_CR1_MSTR : 0;
-	module->regs->CR1 |= params.clock_polarity ? SPI_CR1_CPOL : 0;
-	module->regs->CR1 |= params.clock_phase ? SPI_CR1_CPHA : 0;
-	module->regs->CR1 |= (params.baud_rate & 1) ? SPI_CR1_BR_0 : 0;
-	module->regs->CR1 |= (params.baud_rate & 2) ? SPI_CR1_BR_1 : 0;
-	module->regs->CR1 |= (params.baud_rate & 4) ? SPI_CR1_BR_2 : 0;
-	module->regs->CR1 |= SPI_CR1_SSM;
-	module->regs->CR1 |= SPI_CR1_SSI;
-	module->regs->CR2 = 0;
-
-	module->regs->CR1 |= SPI_CR1_SPE;
-}
-
-void spi_write(const struct spi_module *module, uint8_t data) {
-	module->regs->DR = data;
-}
-
-bool spi_read_ready(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_RXNE;
-}
-
-bool spi_write_ready(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_TXE;
-}
-
-bool spi_is_busy(const struct spi_module *module) {
-	return module->regs->SR & SPI_SR_BSY;
-}
-
-void spi_wait_read_ready(const struct spi_module *module) {
-	while (!spi_read_ready(module)) {};
-}
-
-void spi_wait_write_ready(const struct spi_module *module) {
-	while (!spi_write_ready(module)) {};
-}
-
-void spi_wait_not_busy(const struct spi_module *module) {
-	while (spi_is_busy(module)) {};
-}
-
-uint8_t spi_read(const struct spi_module *module) {
-	return module->regs->DR;
-}
-
-void spi_slave_select(const struct spi_slave *slave) {
-	gpio_write_partial(slave->ss_port, slave->active_pull_up ? -1 : 0,
-					   1 << slave->ss_pin);
-}
-
-void spi_slave_deselect(const struct spi_slave *slave) {
-	gpio_write_partial(slave->ss_port, slave->active_pull_up ? 0 : -1,
-					   1 << slave->ss_pin);
-}
-
-void spi_slave_init(const struct spi_slave *slave) {
-	gpio_init_pin(slave->ss_port,
-				  (struct gpio_pin){.pin = slave->ss_pin, .mode = GPIO_OUTPUT});
-	spi_slave_deselect(slave);
-}
-
-// clang-format off
-#define SPI_DEFINE_MODULE(index, peripheral_bus, alternate_fn)                              \
-	const struct spi_module spi_module_##index = {	                                        \
-		.regs = SPI##index,                                                                 \
-		.apb1_enr = peripheral_bus == APB1 ? RCC_##peripheral_bus##ENR_SPI##index##EN : 0,	\
-		.apb2_enr = peripheral_bus == APB2 ? RCC_##peripheral_bus##ENR_SPI##index##EN : 0,  \
-        .alt_fn = alternate_fn,                                                             \
+void spi_transmit(struct spi_transfer *transfers, uint8_t len) {
+	struct dma_reserved_stream *send_stream =
+		dma_reserve_stream(&dma_controller_1, 3);
+	struct dma_reserved_stream *recv_stream =
+		dma_reserve_stream(&dma_controller_1, 3);
+	struct future *send_future;
+	struct future *recv_future;
+	setup_send_transfer(&spi_module_1, send_stream, &transfers[0]);
+	for (int i = 0; i < len; i++) {
+		setup_recv_transfer(&spi_module_1, send_stream, &transfers[i]);
+		send_future = dma_start_transfer(send_stream);
+		recv_future = dma_start_transfer(recv_stream);
+		await(send_future);
+		// since the recv ends after the send ends, use that time to setup the
+		// next send.
+		if (i + 1 < len) {
+			setup_send_transfer(&spi_module_1, send_stream, &transfers[i + 1]);
+		}
+		await(recv_future);
 	}
-// clang-format on
+	dma_release_stream(send_stream);
+	dma_release_stream(recv_stream);
+}
 
-SPI_DEFINE_MODULE(1, APB2, AF5);
-SPI_DEFINE_MODULE(2, APB1, AF5);
-SPI_DEFINE_MODULE(3, APB1, AF6);
+void test_api() {
+	uint8_t recved;
+
+	// read reg
+	spi_transmit((struct spi_transfer[]){{
+											 .type = SPI_BYTE,
+											 .send = 0xaa,
+										 },
+										 {
+											 .type = SPI_BYTE,
+											 .recv = &recved,
+										 }},
+				 2);
+
+	// read buff
+	uint8_t recved2[100];
+	spi_transmit((struct spi_transfer[]){{
+											 .type = SPI_BYTE,
+											 .send = 0xaa,
+										 },
+										 {
+											 .type = SPI_BUFF,
+											 .recv_buff = recved2,
+											 .rlen = 100,
+										 }},
+				 2);
+}
