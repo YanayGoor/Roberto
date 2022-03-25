@@ -1,16 +1,11 @@
 #include "internal.h"
 
 #include <io/dma.h>
-#include <io/spi_dma.h>
 #include <io/enc28j60.h>
+#include <io/spi_dma.h>
 #include <kernel/time.h>
 #include <malloc.h>
 #include <memory.h>
-
-#define WAIT_10_NS()                                                           \
-	for (int i = 0; i < 10; i++) {}
-#define WAIT_50_NS()                                                           \
-	for (int i = 0; i < 50; i++) {}
 
 #define EIR_ERRORS (EIR_RXERIF | EIR_TXERIF)
 
@@ -70,18 +65,17 @@ void enc28j60_init(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, MAIPG_REG, ENC28J60_IPG_DEFAULT(full_duplex));
 
 	enc28j60_write_phy_ctrl_reg(enc, 0, full_duplex ? PHCON1_PDPXMD : 0);
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
 }
 
 void enc28j60_reset(struct enc28j60_controller *enc) {
 	SPI_SELECT_SLAVE(enc->slave, {
-		WAIT_50_NS() // Tcss
+		nsleep(50); // Tcss
 		spi_write(enc->module, SRC_OPCODE());
 		spi_wait_read_ready(enc->module);
 		spi_read(enc->module);
-		WAIT_10_NS() // Tcsh
+		nsleep(10); // Tcsh
 	})
-	WAIT_50_NS() // Tcsd
 }
 
 int enc28j60_receive_packet(struct enc28j60_controller *enc,
@@ -123,9 +117,9 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 	new_buff[1] = ENC28J60_POVERRIDE | flags;
 
 	SPI_SELECT_SLAVE(enc->slave, {
-		nsleep(50); // Tcsh
+		nsleep(50); // Tcss
 		spi_dma_write(enc->module, new_buff, size + 2);
-		nsleep(210); // Tcsh
+		nsleep(10); // Tcsh
 	})
 
 	free(new_buff);

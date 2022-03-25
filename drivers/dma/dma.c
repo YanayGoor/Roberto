@@ -6,18 +6,18 @@
 #include <sys/queue.h>
 
 #define GET_STREAM_QUEUE(ctrl, stream)                                         \
-	(&transfers[((ctrl)->num - 1) * 8 + stream])
+	(&transfers[((ctrl)->num - 1) * DMA_CTRL_STREAMS + stream])
 
 enum transfer_status { transfer_pending, transfer_in_progress, transfer_done };
 
 struct dma_transfer {
-	const struct dma_stream *stream;
+	const struct dma_config *stream;
 	enum transfer_status status;
 	struct future future;
 	LIST_ENTRY(dma_transfer) entry;
 };
 
-LIST_HEAD(transfers_head, dma_transfer) transfers[8 * 2];
+LIST_HEAD(transfers_head, dma_transfer) transfers[DMA_CTRL_STREAMS * 2];
 
 void dma_enable_controller(const struct dma_controller *ctrl) {
 	RCC->AHB1ENR |= ctrl->enr;
@@ -36,15 +36,16 @@ void list_insert_tail(struct transfers_head *head, struct dma_transfer *item) {
 	LIST_INSERT_AFTER(last, item, entry);
 }
 
-void dma_setup_stream_transfer(const struct dma_stream *transfer) {
-	dma_enable_controller(transfer->ctrl);
-	DMA_Stream_TypeDef *stream = transfer->ctrl->streams[transfer->stream];
+void dma_setup_stream_transfer(const struct dma_config *transfer) {
+	dma_enable_controller(transfer->stream.ctrl);
+	DMA_Stream_TypeDef *stream =
+		transfer->stream.ctrl->streams[transfer->stream.index];
 	stream->CR &= ~DMA_SxCR_EN;
 	while (stream->CR & DMA_SxCR_EN) {}
 	stream->CR = 0;
-	stream->CR |= (transfer->channel & 1) ? DMA_SxCR_CHSEL_0 : 0;
-	stream->CR |= (transfer->channel & 2) ? DMA_SxCR_CHSEL_1 : 0;
-	stream->CR |= (transfer->channel & 4) ? DMA_SxCR_CHSEL_2 : 0;
+	stream->CR |= (transfer->stream.channel & 1) ? DMA_SxCR_CHSEL_0 : 0;
+	stream->CR |= (transfer->stream.channel & 2) ? DMA_SxCR_CHSEL_1 : 0;
+	stream->CR |= (transfer->stream.channel & 4) ? DMA_SxCR_CHSEL_2 : 0;
 	stream->CR |= transfer->minc ? DMA_SxCR_MINC : 0;
 	stream->CR |= transfer->pinc ? DMA_SxCR_PINC : 0;
 	stream->CR |= (transfer->direction & 1) ? DMA_SxCR_DIR_0 : 0;
@@ -60,25 +61,26 @@ void dma_setup_stream_transfer(const struct dma_stream *transfer) {
 	stream->FCR = 0;
 }
 
-void dma_enable_transfer(const struct dma_stream *transfer) {
-	dma_enable_controller(transfer->ctrl);
+void dma_enable_transfer(const struct dma_config *transfer) {
+	dma_enable_controller(transfer->stream.ctrl);
 	dma_setup_stream_transfer(transfer);
-	transfer->ctrl->streams[transfer->stream]->CR |= DMA_SxCR_EN;
+	transfer->stream.ctrl->streams[transfer->stream.index]->CR |= DMA_SxCR_EN;
 }
 
-void dma_setup_transfer(const struct dma_stream *stream) {
+void dma_setup_transfer(const struct dma_config *config) {
 	struct dma_transfer *transfer = malloc(sizeof(struct dma_transfer));
-	transfer->stream = stream;
+	transfer->stream = config;
 	transfer->status = transfer_pending;
 	transfer->future = FUTURE_INITIALIZER(&transfer->future);
-	list_insert_tail(GET_STREAM_QUEUE(stream->ctrl, stream->stream), transfer);
+	list_insert_tail(
+		GET_STREAM_QUEUE(config->stream.ctrl, config->stream.index), transfer);
 	await(&transfer->future);
 }
 
 void __attribute__((noreturn)) dma_background_worker() {
 	while (1) {
 		sched_yield();
-		for (int i = 0; i < 8 * 2; i++) {
+		for (int i = 0; i < DMA_CTRL_STREAMS * 2; i++) {
 			struct dma_transfer *transfer = LIST_FIRST(&transfers[i]);
 			if (transfer == NULL) { continue; }
 			if (transfer->status == transfer_pending) {

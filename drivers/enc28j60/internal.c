@@ -2,6 +2,7 @@
 
 #include <io/enc28j60.h>
 #include <io/spi.h>
+#include <io/spi_dma.h>
 #include <kernel/time.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -17,13 +18,9 @@
 static void _write_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
-		nsleep(210); // Tcsh
-		spi_write(enc->module, WCR_OPCODE(address));
-		spi_wait_write_ready(enc->module);
-		spi_write(enc->module, value);
-		spi_wait_not_busy(enc->module);
-		spi_read(enc->module);
-		nsleep(210); // Tcsh
+		nsleep(50); // Tcss
+		spi_dma_write(enc->module, (uint8_t[]){WCR_OPCODE(address), value}, 2);
+		nsleep(10); // Tcsh
 	})
 }
 
@@ -53,32 +50,33 @@ static uint8_t _read_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 static void _set_bits_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							   uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
-		spi_write(enc->module, BFS_OPCODE(address));
-		spi_wait_write_ready(enc->module);
-		spi_write(enc->module, value);
-		spi_wait_not_busy(enc->module);
-		spi_read(enc->module);
-		nsleep(210); // Tcsh
+		nsleep(50); // Tcss
+		spi_dma_write(enc->module, (uint8_t[]){BFS_OPCODE(address), value}, 2);
+		nsleep(10); // Tcsh
 	})
 }
 
 static void _clear_bits_ctrl_reg(struct enc28j60_controller *enc,
 								 uint8_t address, uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
-		spi_write(enc->module, BFC_OPCODE(address));
-		spi_wait_write_ready(enc->module);
-		spi_write(enc->module, value);
-		spi_wait_not_busy(enc->module);
-		spi_read(enc->module);
-		nsleep(210); // Tcsh
+		nsleep(50); // Tcss
+		spi_dma_write(enc->module, (uint8_t[]){BFC_OPCODE(address), value}, 2);
+		nsleep(10); // Tcsh
 	})
 }
 
 static void _select_bank(struct enc28j60_controller *enc, uint8_t bank) {
 	if (enc->selected_bank == bank) { return; }
+	int8_t prev_bank = enc->selected_bank;
 	enc->selected_bank = bank;
+	//	if (prev_bank == -1 || (((uint8_t)((uint8_t)prev_bank ^ bank))  &
+	//~((uint8_t)prev_bank) )) {
 	_set_bits_ctrl_reg(enc, ENC28J60_ECON1.addr, bank & ECON1_BSEL);
+	//	}
+	//	if (prev_bank == -1 || (((uint8_t)prev_bank ^ bank) &
+	//(uint8_t)prev_bank)) {
 	_clear_bits_ctrl_reg(enc, ENC28J60_ECON1.addr, (~bank) & ECON1_BSEL);
+	//	}
 }
 
 void enc28j60_begin_buff_read(struct enc28j60_controller *enc) {
