@@ -31,6 +31,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mlittle-endian -mthumb -mcpu=cortex-m4 -mth
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard -mfpu=fpv4-sp-d16")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --specs=nosys.specs")
 
+add_compile_definitions(DEBUG_LOOPBACK)
+
 add_compile_definitions(HSE_VALUE=8000000 PLL_M=8)
 
 # TODO: make this work
