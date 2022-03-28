@@ -1,3 +1,5 @@
+#include "io/dma.h"
+
 #include <io/enc28j60.h>
 #include <io/gpio.h>
 #include <io/spi.h>
@@ -57,7 +59,7 @@ const struct spi_params enc28j60_1_spi_params = {.sclk_port = &gpio_pb,
 												 .mosi_port = &gpio_pb,
 												 .mosi_pin = 15,
 												 .is_master = true,
-												 .baud_rate = 4};
+												 .baud_rate = 5};
 
 const struct spi_slave enc8j60_1_spi_slave = {
 	.ss_port = &gpio_pb,
@@ -171,6 +173,7 @@ int main() {
 
 	sched_init();
 	time_init();
+	dma_init();
 
 	sched_start_task(init, NULL);
 

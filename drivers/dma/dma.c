@@ -18,7 +18,7 @@ struct dma_reserved_stream {
 	struct future future;
 };
 
-struct dma_stream_head *streams[DMA_CHANNELS_PER_CTRL * 2];
+struct dma_stream_head streams[DMA_CHANNELS_PER_CTRL * 2];
 
 void dma_enable_controller(const struct dma_controller *ctrl) {
 	RCC->AHB1ENR |= ctrl->enr;
@@ -52,7 +52,7 @@ void dma_configure_stream(const struct dma_controller *ctrl,
 
 struct dma_reserved_stream *
 dma_reserve_stream(const struct dma_controller *ctrl, uint8_t index) {
-	struct dma_stream_head *head = GET_STREAM_HEAD(ctrl, index);
+	struct dma_stream_head *head = &GET_STREAM_HEAD(ctrl, index);
 	head->pending++;
 	if (head->pending > 1) { awaitq(&head->waiting); }
 
@@ -60,20 +60,22 @@ dma_reserve_stream(const struct dma_controller *ctrl, uint8_t index) {
 		malloc(sizeof(struct dma_reserved_stream));
 	reserved_stream->ctrl = ctrl;
 	reserved_stream->index = index;
-	head->current = NULL;
+	head->current = reserved_stream;
 	return reserved_stream;
 }
 
 void dma_release_stream(struct dma_reserved_stream *stream) {
-	struct dma_stream_head *head = GET_STREAM_HEAD(stream->ctrl, stream->index);
+	struct dma_stream_head *head =
+		&GET_STREAM_HEAD(stream->ctrl, stream->index);
 	head->current = NULL;
 	head->pending--;
 
+	free(stream);
 	wake_up_one(&head->waiting);
 }
 
-void dma_setup_transfer(struct dma_reserved_stream *stream,
-						struct dma_transfer_config *config) {
+void dma_setup_transfer(const struct dma_reserved_stream *stream,
+						const struct dma_transfer_config *config) {
 	dma_configure_stream(stream->ctrl, stream->index, config);
 }
 
@@ -81,6 +83,7 @@ void dma_setup_transfer(struct dma_reserved_stream *stream,
  * start a transfer and block until completed
  */
 struct future *dma_start_transfer(struct dma_reserved_stream *stream) {
+	stream->future = FUTURE_INITIALIZER();
 	stream->ctrl->streams[stream->index]->CR |= DMA_SxCR_EN;
 	return &stream->future;
 }
@@ -109,7 +112,7 @@ void dma_init(void) {
 #define DMA_DEFINE_IRQ_HANDLER(ctrl_index, index, high)					\
 	void DMA##ctrl_index##_Stream##index##_IRQHandler(void) {  \
 		dma_controller_##ctrl_index.regs->high##IFCR |= DMA_##high##IFCR_CTCIF##index | DMA_##high##IFCR_CDMEIF##index | DMA_##high##IFCR_CTEIF##index; \
-    	wake_up(&GET_STREAM_HEAD(&dma_controller_##ctrl_index, index)->current->future);                                                                           \
+    	wake_up(&GET_STREAM_HEAD(&dma_controller_##ctrl_index, index).current->future);                                                                           \
 	}
 
 #define DMA_DEFINE_CONTROLLER(index)                          \

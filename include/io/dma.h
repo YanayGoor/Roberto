@@ -45,8 +45,8 @@ void dma_init(void);
 struct dma_reserved_stream *
 dma_reserve_stream(const struct dma_controller *ctrl, uint8_t index);
 void dma_release_stream(struct dma_reserved_stream *stream);
-void dma_setup_transfer(struct dma_reserved_stream *stream,
-						struct dma_transfer_config *config);
+void dma_setup_transfer(const struct dma_reserved_stream *stream,
+						const struct dma_transfer_config *config);
 struct future *dma_start_transfer(struct dma_reserved_stream *stream);
 
 #endif // ROBERTO_DMA_H
