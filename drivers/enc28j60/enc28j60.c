@@ -1,6 +1,10 @@
 #include "internal.h"
+#include "io/dma.h"
+#include "kernel/future.h"
+#include "kernel/time.h"
 
 #include <io/enc28j60.h>
+#include <memory.h>
 
 #define WAIT_10_NS()                                                           \
 	for (int i = 0; i < 10; i++) {}
@@ -65,7 +69,7 @@ void enc28j60_init(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, MAIPG_REG, ENC28J60_IPG_DEFAULT(full_duplex));
 
 	enc28j60_write_phy_ctrl_reg(enc, 0, full_duplex ? PHCON1_PDPXMD : 0);
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
 }
 
 void enc28j60_reset(struct enc28j60_controller *enc) {
@@ -112,23 +116,68 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
 	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
 
+	struct dma_reserved_stream *stream =
+		dma_reserve_stream(&dma_controller_1, 4);
+
+	unsigned char *new_buff = malloc(size + 2);
+	memcpy(new_buff + 2, buffer, size);
+	new_buff[0] = WBM_OPCODE();
+	new_buff[1] = ENC28J60_POVERRIDE | flags;
+
+	const struct dma_transfer_config transfer = {
+		// TODO: choose correct channel + ctrl
+		//		.ctrl = &dma_controller_1,
+		//		.stream = 4,
+		.buffer = new_buff,
+		.size = size + 2,
+		.psize = DMA_BYTE,
+		.msize = DMA_BYTE,
+		.direction = DMA_MEM_TO_PERIPHERAL,
+		.minc = true,
+		.pinc = false,
+		.peripheral_reg = (void *)&enc->module->regs->DR,
+		// TODO: choose correct channel + ctrl
+		.channel = 0,
+	};
+
+	enc->module->regs->CR2 |= SPI_CR2_TXDMAEN;
+
+	dma_setup_transfer(stream, &transfer);
+
 	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_write(enc);
-
-		if (flags) {
-			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
-		} else {
-			enc28j60_buff_write_byte(enc, 0);
-		}
-		enc28j60_buff_write(enc, buffer, size);
-
-		enc28j60_finish_buff_write(enc);
+		nsleep(50); // Tcsh
+		await(dma_start_transfer(stream));
+		nsleep(210); // Tcsh
 	})
+
+	spi_wait_not_busy(enc->module);
+	spi_wait_read_ready(enc->module);
+	spi_read(enc->module);
+
+	enc->module->regs->CR2 &= ~SPI_CR2_TXDMAEN;
+
+	free(new_buff);
+	dma_release_stream(stream);
+
+	//	SPI_SELECT_SLAVE(enc->slave, {
+	//		enc28j60_begin_buff_write(enc);
+	//
+	//		if (flags) {
+	//			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
+	//		} else {
+	//			enc28j60_buff_write_byte(enc, 0);
+	//		}
+	//		enc28j60_buff_write(enc, buffer, size);
+	//
+	//		enc28j60_finish_buff_write(enc);
+	//	})
 
 	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
 	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
 
 	enc->pkt_tx_status_addr = size + 1;
+
+	//	spi_read(enc->module);
 }
 
 void enc28j60_last_transmitted_pkt_status(

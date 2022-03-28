@@ -55,6 +55,7 @@ static uint8_t _read_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 static void _set_bits_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							   uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
+		nsleep(210); // Tcsh
 		spi_write(enc->module, BFS_OPCODE(address));
 		spi_wait_write_ready(enc->module);
 		spi_write(enc->module, value);
