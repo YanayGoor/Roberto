@@ -1,5 +1,6 @@
 #include "internal.h"
 #include "io/dma.h"
+#include "io/spi.h"
 #include "kernel/future.h"
 #include "kernel/time.h"
 
@@ -116,48 +117,53 @@ void enc28j60_transmit_packet(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
 	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
 
-	struct dma_reserved_stream *stream =
-		dma_reserve_stream(&dma_controller_1, 4);
+//	struct dma_reserved_stream *stream =
+//		dma_reserve_stream(&dma_controller_1, 4);
 
-	unsigned char *new_buff = malloc(size + 2);
-	memcpy(new_buff + 2, buffer, size);
-	new_buff[0] = WBM_OPCODE();
-	new_buff[1] = ENC28J60_POVERRIDE | flags;
+//	unsigned char *new_buff = malloc(size + 2);
+//	memcpy(new_buff + 2, buffer, size);
+//	new_buff[0] = WBM_OPCODE();
+//	new_buff[1] = ENC28J60_POVERRIDE | flags;
 
-	const struct dma_transfer_config transfer = {
-		// TODO: choose correct channel + ctrl
-		//		.ctrl = &dma_controller_1,
-		//		.stream = 4,
-		.buffer = new_buff,
-		.size = size + 2,
-		.psize = DMA_BYTE,
-		.msize = DMA_BYTE,
-		.direction = DMA_MEM_TO_PERIPHERAL,
-		.minc = true,
-		.pinc = false,
-		.peripheral_reg = (void *)&enc->module->regs->DR,
-		// TODO: choose correct channel + ctrl
-		.channel = 0,
-	};
+//	const struct dma_transfer_config transfer = {
+//		// TODO: choose correct channel + ctrl
+//		//		.ctrl = &dma_controller_1,
+//		//		.stream = 4,
+//		.buffer = new_buff,
+//		.size = size + 2,
+//		.psize = DMA_BYTE,
+//		.msize = DMA_BYTE,
+//		.direction = DMA_MEM_TO_PERIPHERAL,
+//		.minc = true,
+//		.pinc = false,
+//		.peripheral_reg = (void *)&enc->module->regs->DR,
+//		// TODO: choose correct channel + ctrl
+//		.channel = 0,
+//	};
 
 	enc->module->regs->CR2 |= SPI_CR2_TXDMAEN;
 
-	dma_setup_transfer(stream, &transfer);
+//	dma_setup_transfer(stream, &transfer);
 
 	SPI_SELECT_SLAVE(enc->slave, {
 		nsleep(50); // Tcsh
-		await(dma_start_transfer(stream));
+		spi_transmit(enc->module,
+					 (struct spi_transfer[]){
+						 {.type = SPI_BYTE, .send = WBM_OPCODE()},
+						 {.type = SPI_BUFF, .send_buff = buffer, .slen = size}},
+					 2);
+		//		await(dma_start_transfer(stream));
 		nsleep(210); // Tcsh
 	})
 
-	spi_wait_not_busy(enc->module);
-	spi_wait_read_ready(enc->module);
-	spi_read(enc->module);
+//	spi_wait_not_busy(enc->module);
+//	spi_wait_read_ready(enc->module);
+//	spi_read(enc->module);
 
 	enc->module->regs->CR2 &= ~SPI_CR2_TXDMAEN;
 
-	free(new_buff);
-	dma_release_stream(stream);
+//	free(new_buff);
+//	dma_release_stream(stream);
 
 	//	SPI_SELECT_SLAVE(enc->slave, {
 	//		enc28j60_begin_buff_write(enc);

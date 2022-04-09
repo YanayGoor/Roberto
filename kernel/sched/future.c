@@ -17,10 +17,10 @@ void awaitq(waitq_head *wait_queue) {
 }
 
 void wake_up(struct future *future) {
+	future->done = true;
 	if (future->waiting == NULL) { return; }
 	future->waiting->state = TASK_RUNNING;
 	future->waiting = NULL;
-	future->done = true;
 }
 
 void wake_up_one(waitq_head *wait_queue) {
