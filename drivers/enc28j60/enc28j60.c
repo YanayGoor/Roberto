@@ -84,22 +84,57 @@ void enc28j60_reset(struct enc28j60_controller *enc) {
 	WAIT_50_NS() // Tcsd
 }
 
+void enc28j60_transmit_packet(struct enc28j60_controller *enc,
+							  const uint8_t *buffer, size_t size,
+							  uint8_t flags) {
+	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
+	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
+
+	SPI_SELECT_SLAVE(enc->slave, {
+		nsleep(50); // Tcsh
+		spi_transmit(enc->module,
+					 (struct spi_transfer[]){
+						 {.type = SPI_BYTE, .send = WBM_OPCODE()},
+						 {.type = SPI_BYTE, .send = ENC28J60_POVERRIDE | flags},
+						 {.type = SPI_BUFF, .send_buff = buffer, .slen = size}},
+					 3);
+		nsleep(210); // Tcsh
+	})
+
+	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
+
+	enc->pkt_tx_status_addr = size + 1;
+}
+
 int enc28j60_receive_packet(struct enc28j60_controller *enc,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size) {
 	enc28j60_write_ctrl_reg(enc, ERDPT_REG, enc->next_pkt_addr);
 
 	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_read(enc);
+		nsleep(50); // Tcsh
+		spi_transmit(
+			enc->module,
+			(struct spi_transfer[]){{.type = SPI_BYTE, .send = RBM_OPCODE()},
+									{.type = SPI_BUFF,
+									 .recv_buff = (uint8_t *)header,
+									 .rlen = sizeof(*header)}},
+			2);
 
-		enc28j60_buff_read(enc, (uint8_t *)header, sizeof(*header));
 		if (header->byte_count > size) {
 			// TODO: figure out a better way to handle errors without losing the
 			//  nice context manager syntax.
 			spi_slave_deselect(enc->slave);
 			return -1;
 		}
-		enc28j60_buff_read(enc, buffer, header->byte_count);
+
+		spi_transmit(enc->module,
+					 (struct spi_transfer[]){{.type = SPI_BUFF,
+											  .recv_buff = (uint8_t *)buffer,
+											  .rlen = header->byte_count}},
+					 1);
+		nsleep(210); // Tcsh
 	})
 
 	enc28j60_write_ctrl_reg(enc, ERXRDPT_REG,
@@ -109,81 +144,6 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 
 	enc->next_pkt_addr = header->next_pkt_addr;
 	return header->byte_count;
-}
-
-void enc28j60_transmit_packet(struct enc28j60_controller *enc,
-							  const uint8_t *buffer, size_t size,
-							  uint8_t flags) {
-	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
-	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
-
-//	struct dma_reserved_stream *stream =
-//		dma_reserve_stream(&dma_controller_1, 4);
-
-//	unsigned char *new_buff = malloc(size + 2);
-//	memcpy(new_buff + 2, buffer, size);
-//	new_buff[0] = WBM_OPCODE();
-//	new_buff[1] = ENC28J60_POVERRIDE | flags;
-
-//	const struct dma_transfer_config transfer = {
-//		// TODO: choose correct channel + ctrl
-//		//		.ctrl = &dma_controller_1,
-//		//		.stream = 4,
-//		.buffer = new_buff,
-//		.size = size + 2,
-//		.psize = DMA_BYTE,
-//		.msize = DMA_BYTE,
-//		.direction = DMA_MEM_TO_PERIPHERAL,
-//		.minc = true,
-//		.pinc = false,
-//		.peripheral_reg = (void *)&enc->module->regs->DR,
-//		// TODO: choose correct channel + ctrl
-//		.channel = 0,
-//	};
-
-	enc->module->regs->CR2 |= SPI_CR2_TXDMAEN;
-
-//	dma_setup_transfer(stream, &transfer);
-
-	SPI_SELECT_SLAVE(enc->slave, {
-		nsleep(50); // Tcsh
-		spi_transmit(enc->module,
-					 (struct spi_transfer[]){
-						 {.type = SPI_BYTE, .send = WBM_OPCODE()},
-						 {.type = SPI_BUFF, .send_buff = buffer, .slen = size}},
-					 2);
-		//		await(dma_start_transfer(stream));
-		nsleep(210); // Tcsh
-	})
-
-//	spi_wait_not_busy(enc->module);
-//	spi_wait_read_ready(enc->module);
-//	spi_read(enc->module);
-
-	enc->module->regs->CR2 &= ~SPI_CR2_TXDMAEN;
-
-//	free(new_buff);
-//	dma_release_stream(stream);
-
-	//	SPI_SELECT_SLAVE(enc->slave, {
-	//		enc28j60_begin_buff_write(enc);
-	//
-	//		if (flags) {
-	//			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
-	//		} else {
-	//			enc28j60_buff_write_byte(enc, 0);
-	//		}
-	//		enc28j60_buff_write(enc, buffer, size);
-	//
-	//		enc28j60_finish_buff_write(enc);
-	//	})
-
-	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
-	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
-
-	enc->pkt_tx_status_addr = size + 1;
-
-	//	spi_read(enc->module);
 }
 
 void enc28j60_last_transmitted_pkt_status(
