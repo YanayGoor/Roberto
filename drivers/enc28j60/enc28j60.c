@@ -1,6 +1,11 @@
 #include "internal.h"
+#include "io/dma.h"
+#include "io/spi.h"
+#include "kernel/future.h"
+#include "kernel/time.h"
 
 #include <io/enc28j60.h>
+#include <memory.h>
 
 #define WAIT_10_NS()                                                           \
 	for (int i = 0; i < 10; i++) {}
@@ -65,7 +70,7 @@ void enc28j60_init(struct enc28j60_controller *enc,
 	enc28j60_write_ctrl_reg(enc, MAIPG_REG, ENC28J60_IPG_DEFAULT(full_duplex));
 
 	enc28j60_write_phy_ctrl_reg(enc, 0, full_duplex ? PHCON1_PDPXMD : 0);
-	enc28j60_write_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_RXEN);
 }
 
 void enc28j60_reset(struct enc28j60_controller *enc) {
@@ -79,22 +84,57 @@ void enc28j60_reset(struct enc28j60_controller *enc) {
 	WAIT_50_NS() // Tcsd
 }
 
+void enc28j60_transmit_packet(struct enc28j60_controller *enc,
+							  const uint8_t *buffer, size_t size,
+							  uint8_t flags) {
+	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
+	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
+
+	SPI_SELECT_SLAVE(enc->slave, {
+		nsleep(50); // Tcsh
+		spi_transmit(enc->module,
+					 (struct spi_transfer[]){
+						 {.type = SPI_BYTE, .send = WBM_OPCODE()},
+						 {.type = SPI_BYTE, .send = ENC28J60_POVERRIDE | flags},
+						 {.type = SPI_BUFF, .send_buff = buffer, .slen = size}},
+					 3);
+		nsleep(210); // Tcsh
+	})
+
+	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
+	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
+
+	enc->pkt_tx_status_addr = size + 1;
+}
+
 int enc28j60_receive_packet(struct enc28j60_controller *enc,
 							struct enc28j60_pkt_rx_hdr *header, uint8_t *buffer,
 							size_t size) {
 	enc28j60_write_ctrl_reg(enc, ERDPT_REG, enc->next_pkt_addr);
 
 	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_read(enc);
+		nsleep(50); // Tcsh
+		spi_transmit(
+			enc->module,
+			(struct spi_transfer[]){{.type = SPI_BYTE, .send = RBM_OPCODE()},
+									{.type = SPI_BUFF,
+									 .recv_buff = (uint8_t *)header,
+									 .rlen = sizeof(*header)}},
+			2);
 
-		enc28j60_buff_read(enc, (uint8_t *)header, sizeof(*header));
 		if (header->byte_count > size) {
 			// TODO: figure out a better way to handle errors without losing the
 			//  nice context manager syntax.
 			spi_slave_deselect(enc->slave);
 			return -1;
 		}
-		enc28j60_buff_read(enc, buffer, header->byte_count);
+
+		spi_transmit(enc->module,
+					 (struct spi_transfer[]){{.type = SPI_BUFF,
+											  .recv_buff = (uint8_t *)buffer,
+											  .rlen = header->byte_count}},
+					 1);
+		nsleep(210); // Tcsh
 	})
 
 	enc28j60_write_ctrl_reg(enc, ERXRDPT_REG,
@@ -104,31 +144,6 @@ int enc28j60_receive_packet(struct enc28j60_controller *enc,
 
 	enc->next_pkt_addr = header->next_pkt_addr;
 	return header->byte_count;
-}
-
-void enc28j60_transmit_packet(struct enc28j60_controller *enc,
-							  const uint8_t *buffer, size_t size,
-							  uint8_t flags) {
-	enc28j60_write_ctrl_reg(enc, ETXST_REG, 0);
-	enc28j60_write_ctrl_reg(enc, EWRPT_REG, 0);
-
-	SPI_SELECT_SLAVE(enc->slave, {
-		enc28j60_begin_buff_write(enc);
-
-		if (flags) {
-			enc28j60_buff_write_byte(enc, ENC28J60_POVERRIDE | flags);
-		} else {
-			enc28j60_buff_write_byte(enc, 0);
-		}
-		enc28j60_buff_write(enc, buffer, size);
-
-		enc28j60_finish_buff_write(enc);
-	})
-
-	enc28j60_write_ctrl_reg(enc, ETXND_REG, size);
-	enc28j60_set_bits_ctrl_reg(enc, ENC28J60_ECON1, ECON1_TXRTS);
-
-	enc->pkt_tx_status_addr = size + 1;
 }
 
 void enc28j60_last_transmitted_pkt_status(

@@ -8,10 +8,12 @@ add_executable(Roberto
     roberto.c
     stm32f4/startup_stm32f4xx.s
     stm32f4/system_stm32f4xx.c
+    drivers/spi/spi_poll.c
     drivers/spi/spi.c
     drivers/enc28j60/internal.c
     drivers/enc28j60/enc28j60.c
     drivers/gpio/gpio.c
+    drivers/dma/dma.c
     kernel/sched/context_switch.s
     kernel/sched/sched.c
     kernel/sched/future.c

@@ -14,6 +14,8 @@
 
 #define TO_HIGH_BYTE(hword) (hword << 8)
 
+#define PHY_REG_DELAY_NS 10000
+
 static void _write_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
@@ -53,6 +55,7 @@ static uint8_t _read_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 static void _set_bits_ctrl_reg(struct enc28j60_controller *enc, uint8_t address,
 							   uint8_t value) {
 	SPI_SELECT_SLAVE(enc->slave, {
+		nsleep(210); // Tcsh
 		spi_write(enc->module, BFS_OPCODE(address));
 		spi_wait_write_ready(enc->module);
 		spi_write(enc->module, value);
@@ -164,7 +167,7 @@ uint16_t enc28j60_read_phy_ctrl_reg(struct enc28j60_controller *enc,
 									uint8_t addr) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 1);
-	nsleep(10000);
+	nsleep(PHY_REG_DELAY_NS);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 	enc28j60_write_ctrl_reg(enc, MICMD_REG, 0);
 	return enc28j60_read_ctrl_reg(enc, MIRD_REG);
@@ -174,6 +177,6 @@ void enc28j60_write_phy_ctrl_reg(struct enc28j60_controller *enc, uint8_t addr,
 								 uint16_t value) {
 	enc28j60_write_ctrl_reg(enc, MIREGADR_REG, addr);
 	enc28j60_write_ctrl_reg(enc, MIWR_REG, value);
-	nsleep(10000);
+	nsleep(PHY_REG_DELAY_NS);
 	while (enc28j60_read_ctrl_reg(enc, MISTAT_REG) & 1) {}
 }

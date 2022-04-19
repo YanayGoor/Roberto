@@ -84,4 +84,19 @@ void spi_slave_deselect(const struct spi_slave *slave);
 		spi_slave_deselect(slave);                                             \
 	}
 
+enum spi_transfer_type { SPI_BYTE, SPI_BUFF };
+
+struct spi_transfer {
+	enum spi_transfer_type type;
+	uint8_t send;
+	uint8_t *recv;
+	const uint8_t *send_buff;
+	uint32_t slen;
+	uint8_t *recv_buff;
+	uint32_t rlen;
+};
+
+void spi_transmit(const struct spi_module *module,
+				  struct spi_transfer *transfers, uint8_t len);
+
 #endif /* SPI_H */
